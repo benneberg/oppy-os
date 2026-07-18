@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Oppy",
+  "description": "An opportunity operating system to discover, evaluate, and validate products through structured scoring and evidence-based experimentation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

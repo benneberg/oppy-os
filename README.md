@@ -1,11 +1,81 @@
-<div align="center">
+# Oppy OS - Founder Decision Operating System
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+## Overview
+Oppy OS is an evidence-first command center designed to help venture builders, solo founders, and product incubators validate or reject early-stage venture ideas systematically. By evaluating risk vectors (Killer Risk), calculating baseline potential feasibility indices (Idea Quick-Test Index), and dynamically shifting priority weights based on real customer evidence (interviews, pre-orders, pre-revenues), Oppy OS eliminates emotional confirmation bias before engineering effort begins.
 
-  <h1>Built with AI Studio</h2>
+---
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Requirements
+- Node.js (version 18 or above recommended)
+- npm or yarn package manager
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+---
 
-</div>
+## Installation
+1. Clone the repository files to your local system workspace directory.
+2. Install all development and production package dependencies:
+   ```bash
+   npm install
+   ```
+
+---
+
+## Configuration
+All application settings and API secrets are configured securely.
+- **System-Level API Secrets**: Handled via `.env` environment configuration (e.g. `GEMINI_API_KEY`) and parsed securely on the server-side.
+- **User-Level BYOK Credentials**: Users can configure custom Google Gemini, Groq, or OpenRouter keys in the page header settings dialog. Keys are stored strictly on the client-side in browser `LocalStorage`.
+
+---
+
+## Usage
+To start the application locally:
+```bash
+npm run dev
+```
+Once booted, access the web interface in your browser at `http://localhost:3000`.
+
+### Key Workflows
+1. **Submit Friction Signal**: Navigate to the **Discover Lab** tab. Paste an organic market bottleneck description or problem statement, choose a category, and click **Run Discovery**.
+2. **Track Empirical Validation**: Open an opportunity and log customer interview results, landing page visits, pre-orders, and revenues. The prioritization scoring engine will dynamically shift weighting from heuristics to empirical evidence.
+
+---
+
+## Testing
+There are currently no automated unit test suites configured.
+- Static syntax checking and TypeScript linting:
+  ```bash
+  npm run lint
+  ```
+
+---
+
+## Build
+To compile production-ready client and server assets:
+```bash
+npm run build
+```
+This script transpile React assets using Vite and bundles server.ts into `dist/server.cjs` using esbuild.
+
+---
+
+## Deployment
+Launch the compiled production bundle locally or in containers:
+```bash
+npm run start
+```
+The application is pre-configured for container-based hosting environments (such as Google Cloud Run), binding to port `3000` and host `0.0.0.0` securely.
+
+---
+
+## Repository Structure
+```text
+/src
+  ├── components/               # Interactive views (MorningCockpit, PipelineBoard, DiscoverLab, etc.)
+  ├── data/                     # Seed portfolio initial opportunities files
+  ├── services/                 # Clientside synchronization, calculation formulas, and generator logic
+  ├── server/                   # Server-side prompts and LLM proxy processors
+  └── server.ts                 # Express backend middleware engine
+```
+- `/index.html` serves as the primary SPA layout entry point.
+- `/package.json` manages dependencies, scripts, and build targets.
+- `/oppy_lab_data.json` serves as the primary local backup file database.
