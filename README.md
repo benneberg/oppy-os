@@ -73,9 +73,10 @@ The application is pre-configured for container-based hosting environments (such
   ├── components/               # Interactive views (MorningCockpit, PipelineBoard, DiscoverLab, etc.)
   ├── data/                     # Seed portfolio initial opportunities files
   ├── services/                 # Clientside synchronization, calculation formulas, and generator logic
-  ├── server/                   # Server-side prompts and LLM proxy processors
+  ├── server/                   # Server-side prompts, LLM engines, SQLite database layer, and crawlers
   └── server.ts                 # Express backend middleware engine
 ```
 - `/index.html` serves as the primary SPA layout entry point.
 - `/package.json` manages dependencies, scripts, and build targets.
-- `/oppy_lab_data.json` serves as the primary local backup file database.
+- `/oppy_lab.db` serves as the primary production-grade SQLite database (running in WAL mode).
+

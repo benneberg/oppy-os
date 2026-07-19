@@ -19,15 +19,15 @@ missing_automated_unit_tests:
  notes: ""
 
 concurrency_and_file_system_locks:
- value: "Express server writes synchronously to /oppy_lab_data.json on every state update request."
- evidence_state: OBSERVED
- severity: MEDIUM
+ value: "Resolved: Migrated data state storage to a production-grade SQLite database (oppy_lab.db) running in Write-Ahead Logging (WAL) mode."
+ evidence_state: RESOLVED
+ severity: INFO
  evidence:
-   - server.ts saveData() uses fs.writeFileSync
- impact: "Concurrent requests from multiple workspace users can trigger file-lock errors, write corruption, or race conditions leading to data loss."
- recommendation: "Migrate state data storage to an asynchronous atomic database system such as Google Firestore or Cloud SQL (PostgreSQL)."
+   - Migration of flat file storage to better-sqlite3 with WAL mode and transaction wrapping
+ impact: "Ensures atomic writes and thread-safety across background crawlers and web threads."
+ recommendation: "Continue leveraging SQLite transaction parameters or transition to cloud-hosted PostgreSQL for massive scaling."
  confidence: HIGH
- notes: ""
+ notes: "The file-locking race condition risk has been systematically eliminated."
 
 fallback_schema_validation_gaps:
  value: "Deterministic fallback generator does not validate JSON schema compliance before returning mock values to the client."

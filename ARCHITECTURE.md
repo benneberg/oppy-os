@@ -16,7 +16,7 @@ architecture_style:
  notes: ""
 
 major_components:
- value: "1. Express Web Server (server.ts)\n2. Client Single-Page Application (src/App.tsx & components/*)\n3. Heuristic Scoring Engine (src/services/scoringEngine.ts)\n4. AI Prompting & Operations Engine (src/server/oppyEngine.ts)\n5. Local File State Synchronizer (oppy_lab_data.json)"
+ value: "1. Express Web Server (server.ts)\n2. Client Single-Page Application (src/App.tsx & components/*)\n3. Heuristic Scoring Engine (src/services/scoringEngine.ts)\n4. AI Prompting & Operations Engine (src/server/oppyEngine.ts)\n5. SQLite Database Layer (src/server/db.ts & /oppy_lab.db)\n6. Automated Scout Fleet Crawler Engine (src/server/crawlers.ts)"
  evidence_state: OBSERVED
  confidence: HIGH
  evidence:
@@ -48,7 +48,7 @@ data_flow:
  notes: ""
 
 source_of_truth:
- value: "/oppy_lab_data.json is the primary local server database source of truth. If missing, initializes from src/data/initialOpportunities.ts seeds."
+ value: "SQLite database (/oppy_lab.db) running in WAL mode is the primary local server database source of truth, managing concurrent reads and writes reliably. If empty, it auto-initializes from initial seeds."
  evidence_state: OBSERVED
  confidence: HIGH
  evidence:
@@ -96,7 +96,7 @@ constraints:
  notes: ""
 
 architecture_risks:
- value: "Using a single JSON file (oppy_lab_data.json) as a database leads to potential file-write locks or concurrency failures under multi-user access."
+ value: "SQLite works exceptionally well for single-node systems with concurrent background processing, but scaling to multi-container clusters will require a cloud-hosted database (PostgreSQL/Firestore)."
  evidence_state: INFERRED
  confidence: HIGH
  evidence:
@@ -104,7 +104,7 @@ architecture_risks:
  notes: ""
 
 improvement_opportunities:
- value: "1. Migrate file-based state storage to a robust relational database like PostgreSQL or cloud database like Firestore.\n2. Write structured unit tests for calculating OppyScores."
+ value: "1. Migrate to highly scalable cloud-hosted PostgreSQL with pgvector for advanced vector-similarity searching.\n2. Write automated Vitest suites for evaluating score calculators."
  evidence_state: OBSERVED
  confidence: HIGH
  evidence:
