@@ -17,83 +17,123 @@
 
 ## Phase 1 — Foundation Fixes (Completed ✅)
 
-These unblock everything else. Done before adding any new features.
-
-- [x] **Replace JSON file storage with SQLite** — SQLite via `better-sqlite3` is fully implemented with WAL mode enabled to support concurrent writes from crawler background threads and UI requests.
-- [x] **Wire UserProfile into match scoring** — Dynamic match scores are computed from the active `UserProfile` using the PRD weighted formula (35% skill match, 20% income match, 15% interest match, 10% trust score, 10% time match, 5% freshness) and re-ranked automatically.
-- [x] **Make match score visible on opportunity cards** — Added a highly visible, custom-styled match badge (e.g. "95% Match") to `PipelineBoard` cards.
-- [x] **Fix Opportunity type identity crisis** — Created a clear `'venture' | 'opportunity'` type discriminant. Core layout elements, scores, drawers, and boards render the correct fields and validation logic depending on this value.
+- [x] **Replace JSON file storage with SQLite** — WAL mode, concurrent write safe
+- [x] **Wire UserProfile into match scoring** — Full PRD weighted formula implemented
+- [x] **Make match score visible on opportunity cards** — Match badge on PipelineBoard cards
+- [x] **Fix Opportunity type identity crisis** — `'venture' | 'opportunity'` discriminant in place
 
 ---
 
 ## Phase 2 — Real Discovery Pipeline (Completed ✅)
 
-The agents exist in the UI and actively source, filter, and score opportunities.
-
-- [x] **Build RedditCrawler** — Implemented public API connection to query subreddits (`r/forhire`, `r/slavelabour`, `r/entrepreneur`, `r/sideprojects`, `r/freelance`) and normalize them into the structured `Opportunity` schema.
-- [x] **Build HackerNewsCrawler** — Integrates with Algolia HN Search API for remote gigs and "Who's hiring" threads.
-- [x] **Build GitHubBountyCrawler** — Queries active issue bounties with `bounty` or `help wanted` labels, matching developer interests.
-- [x] **Implement Scam Detection (rule-based first)** — Applies robust heuristic keyword analysis (e.g. upfront payment requests, unrealistic pay scales, Telegram-only contact) and computes a dynamic `riskScore` (0-100) and penalty.
-- [x] **Implement Deduplication** — Combines URL hash comparison with Levenshtein fuzzy title matching to prevent duplicate gigs.
-- [x] **Add crawler scheduler** — Integrated an automatic background crawler scheduling routine running on regular intervals.
+- [x] **Build RedditCrawler** — Live API, r/forhire, r/slavelabour, r/entrepreneur, r/sideprojects, r/freelance
+- [x] **Build HackerNewsCrawler** — Algolia HN Search API, "Who's hiring" threads
+- [x] **Build GitHubBountyCrawler** — GitHub Issues API, `bounty` and `help wanted` labels
+- [x] **Implement Scam Detection (rule-based)** — Heuristic keyword analysis, riskScore 0–10
+- [x] **Implement Deduplication** — URL hash + Levenshtein fuzzy title matching
+- [x] **Add crawler scheduler** — node-cron, Reddit every 2h, HN/GitHub daily
 
 ---
 
 ## Phase 3 — AI Pipeline (Completed ✅)
 
-Wire the scoring engine to discovered opportunities, not just manually entered ones.
-
-- [x] **Auto-classify crawled opportunities** — Sourced gigs are dynamically assigned category taxons based on textual signals and keywords.
-- [x] **Generate llmSummary for each opportunity** — Dynamic prompt synthesis for pros, cons, and validation summaries.
-- [x] **Compute OppyScore for side-income opportunities** — Created an integrated scoring formula that evaluates skill alignment, income goals, trust, and freshness, mapping perfectly into a unified 100-point compatibility score.
-- [x] **Build embedding pipeline** — Semantic search vectors and key attribute indexes are built dynamically during crawl and import cycles.
+- [x] **Auto-classify crawled opportunities** — Keyword-based category assignment on crawl
+- [x] **Generate llmSummary for each opportunity** — `enrichOpportunityWithLLM` runs post-crawl
+- [x] **Add `summarized` caching flag** — DB column prevents re-enrichment on known opportunities
+- [x] **Compute OppyScore for side-income opportunities** — Unified 100-point match formula
+- [x] **Build embedding pipeline** — Attribute indexes built during crawl and import cycles
 
 ---
 
 ## Phase 5 — Frontend Intelligence (Completed ✅)
 
-Make the UI reflect that this is a proactive system, not a manual tracker.
-
-- [x] **Add "Why this matches you" explanation panel** — Every opportunity card shows exactly which profile dimensions drove the match score (e.g., skill fit, income target, interest alignment, time commitment, and trust factors). Included directly in the main overview tab of the opportunity sheet.
-- [x] **Implement Saved / Hidden feedback loop** — Implemented a reactive preference reinforcement loop (`reinforceProfileFromFeedback`) in the data write layer. Saving or promoting a project automatically trains and reinforces associated skills; hiding or deleting logs feedback signals for preference alignment.
-- [x] **Daily digest email** — Created a native, fully automated background scheduler cron job (`cron.schedule('0 8 * * *')`) that compiles and simulated-delivers a custom plain-text top-5 match briefing to the user's registered inbox.
-- [x] **Natural Language / Keyword Filter Bar** — Implemented high-fidelity search bar matching on tags, categories, title terms, and description content across the entire pipeline.
+- [x] **Add "Why this matches you" explanation panel** — `getMatchExplanation` wired to opportunity drawer
+- [x] **Implement Saved / Hidden feedback loop** — `reinforceProfileFromFeedback` in server
+- [x] **Daily digest email** — Cron at 8AM, compiles top-5 matches, console-dispatched
+- [x] **Natural Language / Keyword Filter Bar** — Full-text search across title, tags, category, description
 
 ---
 
 ## Phase 7 — User Onboarding & Guidance (Completed ✅)
 
-- [x] **Multi-Step Onboarding Stepper** — Integrated a highly readable, interactive 4-step walkthrough welcoming founders to the science of Oppy OS (AI Scouts, Dual-Scoring models, Validation Sandboxes).
-- [x] **Durable Completion Memory** — Remembers completed onboarding status locally so returning founders go straight to the cockpit, while allowing reset/re-run from settings.
-- [x] **Integrated 3-Tab Help Center** — Provides Overview, Detailed Concept Manual, and responsive category-filtered FAQ accordion tables.
-- [x] **Responsive Mobile Cockpit Menu** — Optimized layout on compact screens using a collapsible dropdown overlay containing all 9 cockpit tabs, live revenue stats, and system control actions.
+- [x] **Multi-Step Onboarding Stepper** — 4-step interactive walkthrough
+- [x] **Durable Completion Memory** — localStorage onboarding flag, resettable from settings
+- [x] **Integrated 3-Tab Help Center** — Overview, Concept Manual, FAQ accordion
+- [x] **Responsive Mobile Cockpit Menu** — Collapsible dropdown on compact screens
 
 ---
 
-## Phase 4 — Data Layer Migration (Month 2 / Deferred Roadmap)
+## Phase 8 — Testing (Completed ✅)
 
-Scheduled to be executed once the production workload scales beyond single-node environments.
+- [x] **Vitest unit tests for computeOppyScore** — Floor/ceiling clamps, shiftFactor curve, evidence accumulation, risk multipliers, experiment mitigations — all covered in `src/__tests__/scoringEngine.test.ts`
 
-- [ ] **Migrate to PostgreSQL + pgvector** — Replace SQLite with managed PostgreSQL. Add the `pgvector` extension for embedding-based similarity search. This is the production data layer described in the architecture doc.
-- [ ] **Add Redis for job queue** — Move crawler jobs and AI processing tasks into a Redis-backed queue (BullMQ). Prevents the scheduler from spawning duplicate crawl jobs and gives visibility into processing backlog.
-- [ ] **Add Zod schema validation** — Validate all LLM outputs and crawler payloads against the `Opportunity` schema before writing to the database. Catches hallucinated fields and broken crawls early. Addresses the gap noted in `AUDIT.md`.
+---
+
+## 🔴 Critical Bugs & Hardcoded Values (Fix Before Production)
+
+These are concrete issues found in the current codebase — not aspirational tasks.
+
+- [ ] **Remove hardcoded email address** — `crawlers.ts:622` logs `To: benneberg@gmail.com` regardless of the user's profile. The digest recipient must come from `UserProfile.email` (which doesn't exist yet — see below). Until real email is wired, this line should use a placeholder or be suppressed entirely.
+- [ ] **Add `email` field to `UserProfile`** — `types.ts` has no `email` field. The onboarding stepper collects no email address. The daily digest and any future auth flow both need this. Add `email?: string` to `UserProfile`, capture it in `OnboardingProfile.tsx`, and persist via `/api/profile`.
+- [ ] **Replace hardcoded `owner: 'founder@oppy.ai'`** — `oppyEngine.ts:266` and `:452` set `owner` to a static string for every opportunity created via `discoverNewOpportunityAI`. This should read from `userProfile.email` (once added) or be omitted until auth exists.
+- [ ] **Replace hardcoded morning brief fallback copy** — `oppyEngine.ts:195` returns `"Industrial AI dominates your portfolio value density..."` as the static fallback briefing regardless of what's actually in the portfolio. This text leaks your personal use case to any other user. Replace with a generic dynamic fallback: `"You have ${portfolio.length} opportunities tracked. Top scorer: ${topName || 'none yet'}."`
+- [ ] **Replace hardcoded `localhost:3000` in digest links** — `crawlers.ts:610` builds links as `http://localhost:3000/#opp-${opp.id}`. Use `process.env.APP_URL` (already in `.env.example`) with a fallback: `${process.env.APP_URL || 'http://localhost:3000'}/#opp-${opp.id}`.
+- [ ] **Replace fake agent accuracy stats** — `AIWorkforce.tsx` displays hardcoded accuracy figures (`94.2%`, `98.7%`, `96.5%`, `91.8%`, `95.0%`) that are never computed from real data. Either derive them from actual counts (e.g. `(filtered / total * 100).toFixed(1)%` for scam detection) or label them as "estimated" to avoid misleading users.
+- [ ] **Remove `dummy_key_for_build`** — `oppyEngine.ts:9` falls back to `'dummy_key_for_build'` when no `GEMINI_API_KEY` is set. This should be an empty string or a thrown error at startup, not a string that silently reaches the API and generates confusing auth errors.
+
+---
+
+## 🟡 Production Readiness — Before Public Deployment
+
+These gaps don't break local use but will cause problems the moment someone else runs the app.
+
+- [ ] **Wire real email delivery** — The daily digest logs to console via `[SMTP SIMULATOR]` but never sends. Integrate `nodemailer` with SMTP (or `resend`/`sendgrid` via their REST APIs — zero extra dependency). Gate behind `SMTP_HOST` / `RESEND_API_KEY` env var. If absent, keep the console fallback but label it clearly as dev-only. Add `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (or `RESEND_API_KEY`) to `.env.example`.
+- [ ] **Add Zod schema validation on LLM outputs** — `discoverNewOpportunityAI` and `generateArtifactsAI` do `JSON.parse(text || '{}')` with no validation. A hallucinated field name or missing required property silently corrupts the opportunity record. Add a Zod schema matching the expected LLM response shape and throw a typed error on mismatch so the fallback path triggers cleanly.
+- [ ] **Add rate limiting to `/api/discover`** — Each call to this endpoint fires `discoverNewOpportunityAI` + `runScoutFleet` which can make 10–20 LLM calls. There's no debounce or request lock. A double-click or UI retry floods the LLM API and duplicates portfolio entries. Add a simple in-memory lock per session or a 10-second cooldown.
+- [ ] **Sanitize LLM output before DB write** — Opportunity `name`, `tagline`, and `description` fields come directly from LLM responses and go into the DB and UI unescaped. Strip control characters and enforce max lengths before `saveOpportunity()` to prevent XSS vectors and DB bloat.
+- [ ] **Add `/api/health` crawl status** — The health endpoint currently returns `{ status: 'ok', count }`. Extend it to include crawler last-run timestamps and error counts from `getCrawlerMetadata()` so you can monitor pipeline health without reading server logs.
+- [ ] **Guard against DB growing unbounded** — The scheduler runs crawlers every 2h and every new crawl can add 10–30 opportunities. Without pruning, the SQLite DB will accumulate thousands of stale listings within weeks. Add an auto-archive job: opportunities of `type: 'opportunity'` older than 30 days with `matchScore < 40` should be soft-deleted or flagged `stage: 'archived'`.
+- [ ] **Add `matchScore` filter to the feed** — Currently all crawled opportunities appear in the pipeline regardless of match score. Add a minimum threshold filter (default: `matchScore >= 30`) controlled by a slider in the profile settings, so low-relevance junk stays out of the main view.
+
+---
+
+## 🟢 Meaningful UX Improvements (High Value, Medium Effort)
+
+- [ ] **One-click copy for artifacts** — The cold email, LinkedIn messages, and Reddit post in `OpportunityDrawer` are rendered as text but require manual selection to copy. Add a copy-to-clipboard button per artifact block. The `copied` state variable already exists in the drawer — extend it per-artifact.
+- [ ] **Show crawl source badge on opportunity cards** — Crawled opportunities have a `source` field (`Reddit`, `HackerNews`, `GitHub`) but `PipelineBoard` cards don't display it. A small source chip (with favicon or icon) lets you instantly see where a lead came from.
+- [ ] **Add "Apply / Open" CTA to opportunity cards** — Crawled opportunities have a `url` field but there's no direct link in the card or drawer header. Add an "Open Source" button that opens `opp.url` in a new tab, saving the context-switch of finding the link manually.
+- [ ] **Make the morning brief's "Needs Outreach" list actionable** — `MorningCockpit` shows opportunities needing outreach but the items are read-only. Add a "Log Interview" inline button that opens the opportunity drawer directly to the Validation tab.
+- [ ] **Persist sort/filter state** — Changing the pipeline sort or filter resets on every page refresh. Persist the active filter and sort key in `localStorage` so the board remembers your last view.
+- [ ] **Show `evidence_weight_percent` as a progress bar in the drawer** — The shift from heuristic to empirical scoring is the most important concept in the app, but it's invisible to the user. A simple progress bar labeled "Evidence Weight: X% empirical / Y% heuristic" in the Scores tab makes the scoring philosophy tangible.
+- [ ] **Add experiment outcome summary to overview tab** — The `experiments` array is only visible in the Experiments tab. A compact "X of Y experiments: Continue / Pivot / Kill" count on the overview card surface signals progress at a glance.
+
+---
+
+## Phase 4 — Data Layer Migration (Deferred — Scale Trigger)
+
+Only needed when deploying for multiple users or when SQLite WAL hits its concurrency ceiling.
+
+- [ ] **Migrate to PostgreSQL + pgvector** — Managed PostgreSQL + `pgvector` extension for embedding-based similarity search. This is the production data layer from the architecture doc.
+- [ ] **Add Redis for job queue** — BullMQ-backed queue for crawler and AI jobs. Prevents duplicate scheduler runs and gives queue visibility.
 
 ---
 
 ## Phase 6 — Long-Term Roadmap (Month 3+)
 
-- [ ] **Collaborative Workspace** — Multi-founder team support using Firestore real-time sync with strict resource boundaries.
-- [ ] **LinkedIn Outreach Integration** — Automate validation guide delivery directly to economic buyers.
 - [ ] **AI Application Generator** — Given a matched opportunity and user profile, draft a cover letter / proposal / cold email automatically using the `outreachGenerator.ts` pattern already in the codebase.
 - [ ] **Opportunity Forecasting** — Predict which categories are trending (more gigs, higher pay) using 30/60/90 day crawl history.
 - [ ] **Browser Extension** — Detect and ingest opportunities while browsing Upwork, LinkedIn, Reddit natively.
 - [ ] **Mobile App** — React Native wrapper around the core feed + morning brief.
+- [ ] **Collaborative Workspace** — Multi-founder team support with separate profiles and shared opportunity pool.
+- [ ] **LinkedIn Outreach Integration** — Direct LinkedIn API integration for sending validated outreach messages.
 
 ---
 
-## Technical Debt & Operational Status
+## Technical Debt
 
-- [x] **Secure Database Locking** — Handled! Migrated from flat JSON file writes to safe transactional SQLite WAL mode.
-- [x] **Bespoke Skill/Goal Compatibility Model** — Wired the AI scout, crawler, and dashboard engines directly to profile-guided metrics.
-- [ ] **Automated Tests** — Plan to add Vitest unit tests for formulas (OppyScore & matchScore) in the next iteration.
-- [ ] **HttpOnly Cookies for Auth** — Intended for multi-user hosting setup (currently local-first workspace configuration).
+- [x] **Secure Database Locking** — Migrated from flat JSON to SQLite WAL.
+- [x] **Bespoke Skill/Goal Compatibility Model** — Profile-guided metrics wired throughout.
+- [x] **Vitest unit tests** — `scoringEngine.test.ts` covers all major formula branches.
+- [ ] **`computeMatchScore` unit tests** — The scoring engine is tested but `computeMatchScore` and `getMatchExplanation` have no coverage. Add tests for skill ratio calculation, income matching edge cases (zero incomeGoal, no incomeEstimate), and interest keyword extraction.
+- [ ] **HttpOnly Cookies for API keys** — BYOK keys in `localStorage` are XSS-vulnerable. Migrate to HttpOnly cookies or server-side session storage when auth is added.
+- [ ] **Auth layer** — Single-user local tool currently. Any hosted deployment needs OAuth (Google/GitHub) before the hardcoded `owner` and email fields make sense.
