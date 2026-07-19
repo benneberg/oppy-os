@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
@@ -8,14 +7,23 @@ import { INITIAL_OPPORTUNITIES } from './src/data/initialOpportunities.ts';
 import { getMorningAnswers, generateMorningAIIntelligence, discoverNewOpportunityAI, generateArtifactsAI, calculatePriorityScore, analyzeTranscriptAI } from './src/server/oppyEngine.ts';
 import { Opportunity, LLMConfig, UserProfile } from './src/types.ts';
 import { computeOppyScore, computeMatchScore } from './src/services/scoringEngine.ts';
+import {
+  getOpportunities,
+  saveOpportunity,
+  deleteOpportunity,
+  saveAllOpportunities,
+  getUserProfile,
+  saveUserProfile
+} from './src/server/db.ts';
+import {
+  runScoutFleet,
+  startCrawlerScheduler
+} from './src/server/crawlers.ts';
 
 dotenv.config();
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const DATA_FILE = path.join(__dirname, 'oppy_lab_data.json');
 
 // Initialize state
 let portfolio: Opportunity[] = [];
@@ -33,41 +41,44 @@ let userProfile: UserProfile = {
 
 function loadData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        portfolio = parsed;
-      } else {
-        portfolio = parsed.portfolio || [];
-        if (parsed.userProfile) {
-          userProfile = parsed.userProfile;
-        }
-      }
-    } else {
+    // Load from SQLite
+    userProfile = getUserProfile(userProfile);
+    portfolio = getOpportunities();
+
+    if (portfolio.length === 0) {
+      console.log('[DB] Database is empty. Seeding with INITIAL_OPPORTUNITIES...');
       portfolio = JSON.parse(JSON.stringify(INITIAL_OPPORTUNITIES));
-      saveData();
+      saveAllOpportunities(portfolio);
+      saveUserProfile(userProfile);
     }
   } catch (err) {
-    console.warn('Could not read oppy_lab_data.json, falling back to initial seed.');
+    console.warn('[DB] SQLite read error, using memory fallback.', err);
     portfolio = JSON.parse(JSON.stringify(INITIAL_OPPORTUNITIES));
   }
 }
 
 function saveData() {
   try {
-    const out = {
-      portfolio,
-      userProfile
-    };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(out, null, 2), 'utf-8');
+    saveAllOpportunities(portfolio);
+    saveUserProfile(userProfile);
   } catch (err) {
-    console.error('Failed to write oppy_lab_data.json:', err);
+    console.error('[DB] SQLite save error:', err);
   }
 }
 
 async function startServer() {
   loadData();
+
+  // Start background crawler scheduler
+  startCrawlerScheduler(
+    () => portfolio,
+    (updatedPortfolio) => {
+      portfolio = updatedPortfolio;
+      saveAllOpportunities(portfolio);
+    },
+    () => userProfile
+  );
+
   const app = express();
   const PORT = 3000;
 
@@ -109,7 +120,8 @@ async function startServer() {
       opp.matchScore = computeMatchScore(opp, userProfile);
       return opp;
     });
-    saveData();
+    saveUserProfile(userProfile);
+    saveAllOpportunities(portfolio);
     res.json({ success: true, userProfile });
   });
 
@@ -118,9 +130,25 @@ async function startServer() {
     if (!rawSignal) return res.status(400).json({ error: 'Missing rawSignal' });
     try {
       const config = getLLMConfig(req);
+      
+      // 1. LLM Brainstorming of venture idea
       const newOpp = await discoverNewOpportunityAI(rawSignal, category || 'Industrial AI', config);
       portfolio.unshift(newOpp);
-      saveData();
+      saveOpportunity(newOpp);
+
+      // 2. Active Scout Fleet live crawls (Reddit, Hacker News, GitHub)
+      try {
+        console.log('[SCOUT FLEET] Running active multi-source live crawler...');
+        const crawled = await runScoutFleet(portfolio, userProfile);
+        if (crawled.length > 0) {
+          console.log(`[SCOUT FLEET] Successfully sourced ${crawled.length} matching jobs.`);
+          portfolio = [...crawled, ...portfolio];
+          saveAllOpportunities(crawled);
+        }
+      } catch (crawlErr) {
+        console.error('[SCOUT FLEET] Active live crawl failed:', crawlErr);
+      }
+
       res.json(newOpp);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Discover failed' });
@@ -139,9 +167,7 @@ async function startServer() {
     opp.validation.evidence_score = scoreObj.evidence;
     opp.validation.evidence_weight_percent = scoreObj.evidenceWeightPercent;
     
-    // Maintain speed_bonus as is, and update overall risk and penalty
     opp.scores.killer.risk_penalty = scoreObj.risk;
-
     opp.updated = new Date().toISOString();
 
     const idx = portfolio.findIndex(p => p.id === opp.id);
@@ -150,14 +176,14 @@ async function startServer() {
     } else {
       portfolio.unshift(opp);
     }
-    saveData();
+    saveOpportunity(opp);
     res.json(opp);
   });
 
   app.delete('/api/opportunities/:id', (req, res) => {
     const { id } = req.params;
     portfolio = portfolio.filter(p => p.id !== id);
-    saveData();
+    deleteOpportunity(id);
     res.json({ success: true });
   });
 
@@ -170,7 +196,7 @@ async function startServer() {
       const config = getLLMConfig(req);
       const updated = await generateArtifactsAI(portfolio[idx], config);
       portfolio[idx] = updated;
-      saveData();
+      saveOpportunity(updated);
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Artifact generation failed' });
@@ -203,7 +229,7 @@ async function startServer() {
 
   app.post('/api/reset', (req, res) => {
     portfolio = JSON.parse(JSON.stringify(INITIAL_OPPORTUNITIES));
-    saveData();
+    saveAllOpportunities(portfolio);
     res.json({ success: true });
   });
 
