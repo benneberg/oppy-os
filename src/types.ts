@@ -86,6 +86,7 @@ export interface OpportunityDecision {
 }
 
 export interface Opportunity {
+  type?: 'venture' | 'opportunity';
   id: string;
   name: string;
   tagline: string;

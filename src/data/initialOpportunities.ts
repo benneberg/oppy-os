@@ -1786,8 +1786,10 @@ const RAW_INITIAL_OPPORTUNITIES: Opportunity[] = [
 ];
 
 export const INITIAL_OPPORTUNITIES: Opportunity[] = RAW_INITIAL_OPPORTUNITIES.map(opp => {
+  const isOpp = !!(opp.incomeEstimate || opp.trustScore || opp.applicationDeadline || opp.source || opp.skills?.length);
   const cleanOpp = {
     ...opp,
+    type: (opp.type || (isOpp ? 'opportunity' : 'venture')) as 'venture' | 'opportunity',
     validation: {
       interviews: 0,
       positive_interviews: 0,

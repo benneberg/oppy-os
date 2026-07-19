@@ -1,4 +1,4 @@
-import { IQIScores, KillerModeScores, ValidationMetrics, Experiment } from '../types';
+import { IQIScores, KillerModeScores, ValidationMetrics, Experiment, Opportunity, UserProfile } from '../types';
 
 export interface ScoreBreakdown {
   potential: number;         // Derived from IQI (subjective ceiling, shrinks as real data takes over)
@@ -194,4 +194,103 @@ export function computeOppyScore(
     evidenceWeightPercent,
     riskPenalty: baseRiskPenalty
   };
+}
+
+/**
+ * Calculates a match score between an opportunity and the user's profile based on the PRD formula:
+ * - 35% Skill Match: ratio of opportunity skills matching user skills (or description substring match)
+ * - 20% Income Match: average estimated income vs user incomeGoal (or willingness_to_pay for ventures)
+ * - 15% Interest Match: user interest keywords present in opportunity metadata
+ * - 10% Trust Score: trustScore from the opportunity, or default baseline for venture validation
+ * - 10% Time Match: estimatedHours fit within user timeAvailable (or validation speed for ventures)
+ * - 5% Freshness Match: days since last update
+ */
+export function computeMatchScore(opp: Opportunity, profile: UserProfile): number {
+  if (!profile) return 75;
+
+  // 1. Skill Match (35%)
+  let skillRatio = 0;
+  const userSkills = profile.skills || [];
+  if (opp.skills && opp.skills.length > 0) {
+    const matched = opp.skills.filter(s => 
+      userSkills.some(ps => ps.toLowerCase() === s.toLowerCase())
+    ).length;
+    skillRatio = matched / opp.skills.length;
+  } else if (userSkills.length > 0) {
+    const textToSearch = `${opp.name} ${opp.tagline} ${opp.description} ${opp.problem} ${opp.solution}`.toLowerCase();
+    const matched = userSkills.filter(s => textToSearch.includes(s.toLowerCase())).length;
+    skillRatio = matched / userSkills.length;
+  } else {
+    skillRatio = 1.0; // No profile skills specified
+  }
+  const skillScore = Math.min(1.0, skillRatio) * 35;
+
+  // 2. Income Match (20%)
+  let incomeScore = 0;
+  const incomeGoal = profile.incomeGoal || 2500;
+  if (opp.incomeEstimate) {
+    const avgIncome = (opp.incomeEstimate.min + opp.incomeEstimate.max) / 2;
+    if (avgIncome >= incomeGoal) {
+      incomeScore = 20;
+    } else {
+      incomeScore = (avgIncome / incomeGoal) * 20;
+    }
+  } else {
+    const wtp = opp.scores?.iqi?.willingness_to_pay || 5;
+    incomeScore = (wtp / 10) * 20;
+  }
+
+  // 3. Interest Match (15%)
+  let interestScore = 0;
+  if (profile.interests) {
+    const interestKeywords = profile.interests
+      .toLowerCase()
+      .split(/[\s,.-]+/)
+      .filter(w => w.length > 3 && !['with', 'your', 'that', 'this', 'from', 'have', 'tech', 'custom', 'automation', 'business', 'businesses'].includes(w));
+    
+    if (interestKeywords.length > 0) {
+      const textToSearch = `${opp.name} ${opp.tagline} ${opp.description} ${opp.problem} ${opp.solution}`.toLowerCase();
+      const matched = interestKeywords.filter(k => textToSearch.includes(k)).length;
+      interestScore = Math.min(1.0, matched / Math.min(5, interestKeywords.length)) * 15;
+    } else {
+      interestScore = 10;
+    }
+  } else {
+    interestScore = 15;
+  }
+
+  // 4. Trust Score (10%)
+  const trustVal = opp.trustScore !== undefined ? opp.trustScore : 75;
+  const trustScore = (trustVal / 100) * 10;
+
+  // 5. Time Match (10%)
+  let timeScore = 0;
+  const timeAvailable = profile.timeAvailable || 15;
+  if (opp.estimatedHours !== undefined) {
+    if (opp.estimatedHours <= timeAvailable) {
+      timeScore = 10;
+    } else {
+      timeScore = Math.max(0, 10 - ((opp.estimatedHours - timeAvailable) / timeAvailable) * 10);
+    }
+  } else {
+    const speed = opp.scores?.iqi?.validation_speed || 5;
+    timeScore = (speed / 10) * 10;
+  }
+
+  // 6. Freshness Match (5%)
+  let freshnessScore = 1;
+  try {
+    const updatedMs = opp.updated ? new Date(opp.updated).getTime() : new Date(opp.created || Date.now()).getTime();
+    const daysSinceUpdate = (Date.now() - updatedMs) / (1000 * 60 * 60 * 24);
+    if (daysSinceUpdate <= 1) freshnessScore = 5;
+    else if (daysSinceUpdate <= 3) freshnessScore = 4;
+    else if (daysSinceUpdate <= 7) freshnessScore = 3;
+    else if (daysSinceUpdate <= 14) freshnessScore = 2;
+    else freshnessScore = 1;
+  } catch {
+    freshnessScore = 3;
+  }
+
+  const totalScore = Math.round(skillScore + incomeScore + interestScore + trustScore + timeScore + freshnessScore);
+  return Math.max(0, Math.min(100, totalScore));
 }

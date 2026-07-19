@@ -533,7 +533,7 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
               </div>
 
               {/* Conditional Rendering: Side Income Specific Metadata OR SaaS Unit Economics Simulator */}
-              {!['Industrial AI', 'Developer Productivity', 'Strategic Insight'].includes(opp.category) ? (
+              {opp.type === 'opportunity' ? (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 space-y-4">
                   <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
                     <span className="text-xs font-display uppercase tracking-wider text-neutral-900 font-bold flex items-center space-x-2">

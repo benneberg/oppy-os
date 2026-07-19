@@ -7,7 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { INITIAL_OPPORTUNITIES } from './src/data/initialOpportunities.ts';
 import { getMorningAnswers, generateMorningAIIntelligence, discoverNewOpportunityAI, generateArtifactsAI, calculatePriorityScore, analyzeTranscriptAI } from './src/server/oppyEngine.ts';
 import { Opportunity, LLMConfig, UserProfile } from './src/types.ts';
-import { computeOppyScore } from './src/services/scoringEngine.ts';
+import { computeOppyScore, computeMatchScore } from './src/services/scoringEngine.ts';
 
 dotenv.config();
 
@@ -95,12 +95,20 @@ async function startServer() {
   });
 
   app.get('/api/portfolio', (req, res) => {
+    portfolio = portfolio.map(opp => {
+      opp.matchScore = computeMatchScore(opp, userProfile);
+      return opp;
+    });
     const morning = getMorningAnswers(portfolio);
     res.json({ portfolio, morning, userProfile });
   });
 
   app.post('/api/profile', (req, res) => {
     userProfile = req.body;
+    portfolio = portfolio.map(opp => {
+      opp.matchScore = computeMatchScore(opp, userProfile);
+      return opp;
+    });
     saveData();
     res.json({ success: true, userProfile });
   });

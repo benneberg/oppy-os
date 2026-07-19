@@ -254,6 +254,7 @@ export async function discoverNewOpportunityAI(rawSignal: string, category: Cate
       speed_bonus: 20
     };
     const fallbackOpp: Opportunity = {
+      type: 'venture',
       id,
       name: rawSignal.slice(0, 40).replace(/[^a-zA-Z0-9 ]/g, '') || 'New Opportunity',
       tagline: `Structured venture opportunity derived from raw founder signal`,
@@ -439,6 +440,7 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
     const scoreObj = computeOppyScore(iqiObj, dummyValidation, killerObj);
 
     const initialOpp: Opportunity = {
+      type: 'venture',
       id,
       name: parsed.name || 'New Opportunity',
       tagline: parsed.tagline || rawSignal,
@@ -490,6 +492,7 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
     const finalOpp = await generateArtifactsAI(initialOpp, config);
 
     if (!['Industrial AI', 'Developer Productivity', 'Strategic Insight'].includes(category)) {
+      finalOpp.type = 'opportunity';
       finalOpp.source = 'Web Sourced';
       finalOpp.url = '';
       finalOpp.location = 'Remote';
@@ -506,6 +509,8 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
       finalOpp.competitionLevel = 'Medium';
       finalOpp.llmSummary = parsed.solution || '';
       finalOpp.matchScore = Math.min(100, Math.max(50, Math.round(95 - (riskCount * 1.5))));
+    } else {
+      finalOpp.type = 'venture';
     }
 
     finalOpp.experiments.push({

@@ -128,9 +128,16 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                       >
                         {/* Top Badges */}
                         <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-                          <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase truncate max-w-[120px]">
-                            {opp.category}
-                          </span>
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase truncate max-w-[100px]">
+                              {opp.category}
+                            </span>
+                            {opp.matchScore !== undefined && (
+                              <span className="px-1.5 py-0.5 rounded font-bold bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
+                                {opp.matchScore}% Match
+                              </span>
+                            )}
+                          </div>
                           <span className="px-2 py-0.5 rounded font-bold bg-neutral-900 text-white shrink-0">
                             ★ {opp.scores.priority_score}
                           </span>
@@ -148,7 +155,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
 
                         {/* Metrics Row */}
                         <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] font-mono text-neutral-600">
-                          {!['Industrial AI', 'Developer Productivity', 'Strategic Insight'].includes(opp.category) ? (
+                          {opp.type === 'opportunity' ? (
                             <>
                               <span className="flex items-center space-x-0.5 text-neutral-800 font-semibold" title="Income Estimate">
                                 <DollarSign className="w-3 h-3 text-neutral-400" />
@@ -165,8 +172,8 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                                   <span>{opp.estimatedHours}h/wk</span>
                                 </span>
                               )}
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-neutral-900 text-white">
-                                {opp.matchScore ? `${opp.matchScore}% Match` : 'Sourced'}
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 uppercase">
+                                Gig
                               </span>
                             </>
                           ) : (
