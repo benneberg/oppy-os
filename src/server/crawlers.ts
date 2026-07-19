@@ -537,5 +537,60 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
     }
   });
 
+  // Daily Digest Email: Runs at 8:00 AM daily
+  cron.schedule('0 8 * * *', () => {
+    console.log('[SCHEDULER] Compiling Daily Digest Email brief...');
+    try {
+      const existing = getPortfolio();
+      const profile = profileGetter();
+      if (!profile) return;
+
+      // Filter active matching opportunities and sort by matchScore desc
+      const matches = existing
+        .filter(p => p.stage === 'active' || p.stage === 'sandbox')
+        .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+        .slice(0, 5);
+
+      const emailSubject = `Oppy OS: Your Top 5 Venture Matches for Today`;
+      const emailHeader = `
+============================================================
+Daily Venture Briefing - ${new Date().toLocaleDateString()}
+Target Goal: ${profile.incomeGoal ? `$${profile.incomeGoal}/mo` : 'Not Set'}
+============================================================
+Hello, Founder!
+
+Here is your customized morning digest of high-probability ventures matching your expert skillset (${(profile.skills || []).join(', ')}).
+
+`;
+      const emailBody = matches.length > 0 
+        ? matches.map((opp, idx) => `
+[#${idx + 1}] ${opp.name} (${opp.matchScore || 0}% Match)
+Tagline: ${opp.tagline}
+Category: ${opp.category}
+Est. Income: ${opp.incomeEstimate ? `$${opp.incomeEstimate.min}-${opp.incomeEstimate.max}/mo` : opp.monetization || 'N/A'}
+Risk Profile: ${opp.scores?.killer?.overall_risk || 'Low Risk'}
+Action Trigger: ${opp.decision?.recommended_action || 'Review Signal'}
+Reason: ${opp.decision?.reason || 'Aligned with preferences.'}
+Link: http://localhost:3000/#opp-${opp.id}
+------------------------------------------------------------`
+        ).join('\n')
+        : '\nNo outstanding matching opportunities found matching your profile thresholds today.\n';
+
+      const emailFooter = `
+============================================================
+Build your MVP. Collect real evidence. Conquer the niche.
+Oppy Founder OS Intelligence Engine.
+============================================================
+`;
+      console.log(`\n--- [SMTP SIMULATOR] OUTGOING EMAIL DISPATCHED ---`);
+      console.log(`To: benneberg@gmail.com`);
+      console.log(`Subject: ${emailSubject}`);
+      console.log(`${emailHeader}${emailBody}${emailFooter}`);
+      console.log(`--- [SMTP SIMULATOR] DISPATCH COMPLETED SUCCESSFULLY ---\n`);
+    } catch (err) {
+      console.error('[SCHEDULER] Failed to compile daily digest:', err);
+    }
+  });
+
   console.log('[SCHEDULER] Background crawler schedule armed successfully.');
 }

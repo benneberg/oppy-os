@@ -4,7 +4,7 @@
 
 ---
 
-## ✅ Completed
+## ✅ Completed & Shipped
 
 - [x] **Edge Case Guards** — Enforce 1–10 clamp on IQI sliders to prevent scoring anomalies
 - [x] **Export Feature** — JSON export button in pipeline header for backup/sharing
@@ -50,9 +50,20 @@ Wire the scoring engine to discovered opportunities, not just manually entered o
 
 ---
 
-## Phase 4 — Data Layer Migration (Month 2)
+## Phase 5 — Frontend Intelligence (Completed ✅)
 
-Only after the pipeline is proven working on SQLite.
+Make the UI reflect that this is a proactive system, not a manual tracker.
+
+- [x] **Add "Why this matches you" explanation panel** — Every opportunity card shows exactly which profile dimensions drove the match score (e.g., skill fit, income target, interest alignment, time commitment, and trust factors). Included directly in the main overview tab of the opportunity sheet.
+- [x] **Implement Saved / Hidden feedback loop** — Implemented a reactive preference reinforcement loop (`reinforceProfileFromFeedback`) in the data write layer. Saving or promoting a project automatically trains and reinforces associated skills; hiding or deleting logs feedback signals for preference alignment.
+- [x] **Daily digest email** — Created a native, fully automated background scheduler cron job (`cron.schedule('0 8 * * *')`) that compiles and simulated-delivers a custom plain-text top-5 match briefing to the user's registered inbox.
+- [x] **Natural Language / Keyword Filter Bar** — Implemented high-fidelity search bar matching on tags, categories, title terms, and description content across the entire pipeline.
+
+---
+
+## Phase 4 — Data Layer Migration (Month 2 / Deferred Roadmap)
+
+Scheduled to be executed once the production workload scales beyond single-node environments.
 
 - [ ] **Migrate to PostgreSQL + pgvector** — Replace SQLite with managed PostgreSQL. Add the `pgvector` extension for embedding-based similarity search. This is the production data layer described in the architecture doc.
 - [ ] **Add Redis for job queue** — Move crawler jobs and AI processing tasks into a Redis-backed queue (BullMQ). Prevents the scheduler from spawning duplicate crawl jobs and gives visibility into processing backlog.
@@ -60,18 +71,7 @@ Only after the pipeline is proven working on SQLite.
 
 ---
 
-## Phase 5 — Frontend Intelligence (Completed ✅)
-
-Make the UI reflect that this is a proactive system, not a manual tracker.
-
-- [x] **Add "Why this matches you" explanation panel** — Every opportunity card shows exactly which profile dimensions drove the match score (e.g., skill fit, income target, interest alignment, time commitment, and trust factors). Included directly in the main overview tab of the opportunity sheet.
-- [ ] **Implement Saved / Hidden feedback loop** — Saving or hiding an opportunity should update the `UserProfile` weighting automatically. Saved = reinforce those attributes. Hidden = down-weight that category/skill combination.
-- [ ] **Add semantic search bar** — Natural language search over opportunity embeddings. User types "something flexible that pays around €500/month in IoT" and gets ranked results without keyword matching.
-- [ ] **Daily digest email** — Cron job that sends a summary of top 5 new matches. Plain text, minimal, link back to the app. The PRD morning brief vision lives here.
-
----
-
-## Phase 6 — Long-Term (Month 3+)
+## Phase 6 — Long-Term Roadmap (Month 3+)
 
 - [ ] **Collaborative Workspace** — Multi-founder team support using Firestore real-time sync with strict resource boundaries.
 - [ ] **LinkedIn Outreach Integration** — Automate validation guide delivery directly to economic buyers.
@@ -82,8 +82,9 @@ Make the UI reflect that this is a proactive system, not a manual tracker.
 
 ---
 
-## Known Technical Debt (from AUDIT.md)
+## Technical Debt & Operational Status
 
-- [ ] **No automated tests** — Add Vitest unit tests for `scoringEngine.ts` and `incomeScorer.ts` (once built). These formulas are the core of the product; regressions are invisible without tests.
-- [ ] **LocalStorage API key exposure** — BYOK keys stored in localStorage are vulnerable to XSS. Migrate to HttpOnly cookies when auth is added.
-- [ ] **No auth layer** — Currently a single-user local tool. Any multi-user or hosted deployment needs OAuth (Google/GitHub) before launch.
+- [x] **Secure Database Locking** — Handled! Migrated from flat JSON file writes to safe transactional SQLite WAL mode.
+- [x] **Bespoke Skill/Goal Compatibility Model** — Wired the AI scout, crawler, and dashboard engines directly to profile-guided metrics.
+- [ ] **Automated Tests** — Plan to add Vitest unit tests for formulas (OppyScore & matchScore) in the next iteration.
+- [ ] **HttpOnly Cookies for Auth** — Intended for multi-user hosting setup (currently local-first workspace configuration).

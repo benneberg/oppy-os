@@ -155,6 +155,36 @@ async function startServer() {
     }
   });
 
+  function reinforceProfileFromFeedback(opp: Opportunity, action: 'save' | 'delete') {
+    try {
+      if (action === 'save') {
+        // If promoted to active/validated/production, reinforce skills
+        if (opp.stage === 'active' || opp.stage === 'validated' || opp.stage === 'production') {
+          if (opp.skills && opp.skills.length > 0) {
+            let updated = false;
+            const currentSkills = [...userProfile.skills];
+            for (const s of opp.skills) {
+              if (!currentSkills.some(cs => cs.toLowerCase() === s.toLowerCase())) {
+                currentSkills.push(s);
+                updated = true;
+              }
+            }
+            if (updated) {
+              userProfile.skills = currentSkills;
+              saveUserProfile(userProfile);
+              console.log(`[OPPY LEARNER] Reinforced skills in user profile based on "${opp.name}" promotion:`, opp.skills);
+            }
+          }
+        }
+      } else if (action === 'delete') {
+        // Hiding/deleting - can help filter down preferences or register telemetry
+        console.log(`[OPPY LEARNER] Registered deleted signal for opportunity "${opp.name}" of category "${opp.category}".`);
+      }
+    } catch (err) {
+      console.error('[OPPY LEARNER] Failed to reinforce profile:', err);
+    }
+  }
+
   app.post('/api/opportunities', (req, res) => {
     const opp: Opportunity = req.body;
     if (!opp || !opp.id) return res.status(400).json({ error: 'Invalid opportunity data' });
@@ -177,11 +207,16 @@ async function startServer() {
       portfolio.unshift(opp);
     }
     saveOpportunity(opp);
+    reinforceProfileFromFeedback(opp, 'save');
     res.json(opp);
   });
 
   app.delete('/api/opportunities/:id', (req, res) => {
     const { id } = req.params;
+    const targetOpp = portfolio.find(p => p.id === id);
+    if (targetOpp) {
+      reinforceProfileFromFeedback(targetOpp, 'delete');
+    }
     portfolio = portfolio.filter(p => p.id !== id);
     deleteOpportunity(id);
     res.json({ success: true });
