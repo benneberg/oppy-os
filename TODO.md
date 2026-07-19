@@ -61,6 +61,15 @@ Make the UI reflect that this is a proactive system, not a manual tracker.
 
 ---
 
+## Phase 7 — User Onboarding & Guidance (Completed ✅)
+
+- [x] **Multi-Step Onboarding Stepper** — Integrated a highly readable, interactive 4-step walkthrough welcoming founders to the science of Oppy OS (AI Scouts, Dual-Scoring models, Validation Sandboxes).
+- [x] **Durable Completion Memory** — Remembers completed onboarding status locally so returning founders go straight to the cockpit, while allowing reset/re-run from settings.
+- [x] **Integrated 3-Tab Help Center** — Provides Overview, Detailed Concept Manual, and responsive category-filtered FAQ accordion tables.
+- [x] **Responsive Mobile Cockpit Menu** — Optimized layout on compact screens using a collapsible dropdown overlay containing all 9 cockpit tabs, live revenue stats, and system control actions.
+
+---
+
 ## Phase 4 — Data Layer Migration (Month 2 / Deferred Roadmap)
 
 Scheduled to be executed once the production workload scales beyond single-node environments.

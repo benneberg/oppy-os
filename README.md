@@ -35,8 +35,11 @@ npm run dev
 Once booted, access the web interface in your browser at `http://localhost:3000`.
 
 ### Key Workflows
-1. **Submit Friction Signal**: Navigate to the **Discover Lab** tab. Paste an organic market bottleneck description or problem statement, choose a category, and click **Run Discovery**.
-2. **Track Empirical Validation**: Open an opportunity and log customer interview results, landing page visits, pre-orders, and revenues. The prioritization scoring engine will dynamically shift weighting from heuristics to empirical evidence.
+1. **Guided Onboarding**: First-time founders are welcomed with a 4-step interactive tour explaining Oppy's core design mechanics (Automated Scouts, OppyScore vs Match Score, and Sandbox Validation). This state is saved in LocalStorage and can be replayed from the settings.
+2. **Submit Friction Signal**: Navigate to the **Discover Lab** tab. Paste an organic market bottleneck description or problem statement, choose a category, and click **Run Discovery**.
+3. **Track Empirical Validation**: Open an opportunity and log customer interview results, landing page visits, pre-orders, and revenues. The prioritization scoring engine will dynamically shift weighting from heuristics to empirical evidence.
+4. **Learn via the Help & Manual**: Access the **Help & Manual** tab from the main navigation (or mobile menu). It features a conceptual overview, a chapter-by-chapter detailed guide, and a categorized, responsive FAQ accordion.
+5. **Mobile Workspace Optimization**: View, manage, and discover opportunities on mobile portrait screens using the collapsible navigation dropdown with live KPI trackers and quick actions.
 
 ---
 

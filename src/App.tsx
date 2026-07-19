@@ -17,6 +17,8 @@ import { SystemArchitectureView } from './components/SystemArchitectureView';
 import { LLMSettingsModal } from './components/LLMSettingsModal';
 import { OnboardingProfile } from './components/OnboardingProfile';
 import { AIWorkforce } from './components/AIWorkforce';
+import { OnboardingStepper } from './components/OnboardingStepper';
+import { AboutApp } from './components/AboutApp';
 import { Compass, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -38,6 +40,7 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -70,6 +73,10 @@ export default function App() {
 
   useEffect(() => {
     loadAllData();
+    const completed = localStorage.getItem('oppy-onboarded');
+    if (!completed) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   const handleReset = async () => {
@@ -237,6 +244,10 @@ export default function App() {
             portfolio={portfolio}
           />
         )}
+
+        {activeTab === 'about' && (
+          <AboutApp onLaunchTour={() => setShowOnboarding(true)} />
+        )}
       </main>
 
       <footer className="border-t border-neutral-200 bg-white py-6 text-center font-mono text-[11px] text-neutral-500">
@@ -260,6 +271,15 @@ export default function App() {
       <LLMSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        onResetOnboarding={() => setShowOnboarding(true)}
+      />
+
+      <OnboardingStepper
+        isOpen={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          localStorage.setItem('oppy-onboarded', 'true');
+        }}
       />
     </div>
   );

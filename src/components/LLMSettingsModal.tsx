@@ -4,6 +4,7 @@ import { X, Shield, Key, Sparkles, CheckCircle } from 'lucide-react';
 interface LLMSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onResetOnboarding?: () => void;
 }
 
 const PROVIDERS = [
@@ -43,7 +44,7 @@ const PROVIDERS = [
   }
 ];
 
-export const LLMSettingsModal: React.FC<LLMSettingsModalProps> = ({ isOpen, onClose }) => {
+export const LLMSettingsModal: React.FC<LLMSettingsModalProps> = ({ isOpen, onClose, onResetOnboarding }) => {
   const [provider, setProvider] = useState('gemini');
   const [model, setModel] = useState('gemini-3.5-flash');
   const [apiKey, setApiKey] = useState('');
@@ -187,6 +188,31 @@ export const LLMSettingsModal: React.FC<LLMSettingsModalProps> = ({ isOpen, onCl
                 className="w-full px-4 py-2.5 pr-10 rounded-xl border border-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white font-mono text-sm"
               />
               <Key className="absolute right-3.5 top-3.5 w-4 h-4 text-neutral-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Section 4: Guided Onboarding Tour */}
+          <div className="space-y-2.5 pt-4 border-t border-neutral-150">
+            <label className="text-xs font-mono uppercase tracking-wider text-neutral-500 font-semibold block">
+              4. App Tutorials
+            </label>
+            <div className="flex items-center justify-between p-4 rounded-xl border border-neutral-200 bg-neutral-50/50">
+              <div className="space-y-0.5">
+                <span className="font-sans font-bold text-xs text-neutral-900 block">Onboarding Walkthrough</span>
+                <span className="font-sans text-[11px] text-neutral-500 block">Replay the step-by-step introduction stepper.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onResetOnboarding) {
+                    onResetOnboarding();
+                    onClose();
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-neutral-900 text-white font-bold text-xs hover:bg-neutral-800 transition-all active:scale-95 cursor-pointer"
+              >
+                Launch Tour
+              </button>
             </div>
           </div>
         </div>
