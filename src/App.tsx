@@ -253,6 +253,7 @@ export default function App() {
           onSave={handleSaveOpp}
           onGenerateArtifacts={handleGenerateArtifacts}
           onDelete={handleDeleteOpp}
+          userProfile={profile}
         />
       )}
 

@@ -10,41 +10,43 @@
 - [x] **Export Feature** — JSON export button in pipeline header for backup/sharing
 - [x] **Interview Transcription** — MediaRecorder-based audio capture → structured metric extraction
 - [x] **Dynamic Pricing Sandbox** — LTV/CAC slider simulator alongside monetization descriptions
+- [x] **Stalled Projects Detection** — Daily Dashboard feature identifying stalled projects with brief reasons and recommended actions (Re-evaluate Hypothesis, Attempt Outreach, Archive)
+- [x] **Refactored OppyScore Algorithm** — Weighted 'Evidence' metrics higher and integrated a risk re-evaluation system where 'Killer Mode' risks are reduced by successful validation experiments (Continue decisions)
 
 ---
 
-## Phase 1 — Foundation Fixes (Next 72 Hours)
+## Phase 1 — Foundation Fixes (Completed ✅)
 
-These unblock everything else. Do these before adding any new features.
+These unblock everything else. Done before adding any new features.
 
-- [ ] **Replace JSON file storage with SQLite** — `fs.writeFileSync` to a flat file will corrupt data under concurrent writes (crawler + UI hitting the server simultaneously). SQLite via `better-sqlite3` is a zero-infra swap that eliminates the race condition. PostgreSQL comes later.
-- [ ] **Wire UserProfile into match scoring** — `matchScore` exists on `Opportunity` but isn't computed from the actual `UserProfile`. Implement the weighted formula from the PRD (35% skill match, 20% income match, 15% interest match, 10% trust score, 10% time match, 5% freshness) and re-rank the portfolio feed whenever the profile changes.
-- [ ] **Make match score visible on opportunity cards** — Currently the `matchScore` field is invisible in the UI. Add a match badge to `PipelineBoard` cards so users see why something surfaced.
-- [ ] **Fix Opportunity type identity crisis** — The `Opportunity` type is trying to be both a startup idea tracker (IQI, validation interviews, experiments) and a side-income card (trustScore, applicationDeadline, incomeEstimate). Add a `type` discriminant (`'venture' | 'opportunity'`) so components can render the right fields and validation logic without branching hacks.
-
----
-
-## Phase 2 — Real Discovery Pipeline (Next 2 Weeks)
-
-The agents exist in the UI but do nothing. This phase makes Scout real.
-
-- [ ] **Build RedditCrawler** — Use the Reddit JSON API (no auth needed for public posts). Target subreddits: `r/forhire`, `r/slavelabour`, `r/entrepreneur`, `r/sideprojects`, `r/freelance`. Normalize results into the `Opportunity` schema.
-- [ ] **Build HackerNewsCrawler** — Poll the Algolia HN Search API for "Who's hiring", "Freelancer? Seeking freelancer", and "Ask HN: Who wants to be hired" threads monthly. Free, no scraping.
-- [ ] **Build GitHubBountyCrawler** — Query GitHub Issues API with labels `bounty`, `help wanted`, `up-for-grabs`. Filter by language tags matching user skills.
-- [ ] **Implement Scam Detection (rule-based first)** — Before touching LLMs, apply fast heuristic rules: upfront payment keywords, unrealistic salary claims (>3× market rate), Telegram-only contact, missing company name, domain age < 30 days. Assign a `riskScore` from 0–10.
-- [ ] **Implement Deduplication** — URL hash first (fastest), then title fuzzy match using Levenshtein distance, then flag for LLM comparison only when fuzzy score > 0.8. Prevents the same Upwork job appearing 3× from different crawlers.
-- [ ] **Add crawler scheduler** — Simple `node-cron` job: high-priority sources every hour, medium every 6h, low daily. Store last-crawled timestamp per source in the database.
+- [x] **Replace JSON file storage with SQLite** — SQLite via `better-sqlite3` is fully implemented with WAL mode enabled to support concurrent writes from crawler background threads and UI requests.
+- [x] **Wire UserProfile into match scoring** — Dynamic match scores are computed from the active `UserProfile` using the PRD weighted formula (35% skill match, 20% income match, 15% interest match, 10% trust score, 10% time match, 5% freshness) and re-ranked automatically.
+- [x] **Make match score visible on opportunity cards** — Added a highly visible, custom-styled match badge (e.g. "95% Match") to `PipelineBoard` cards.
+- [x] **Fix Opportunity type identity crisis** — Created a clear `'venture' | 'opportunity'` type discriminant. Core layout elements, scores, drawers, and boards render the correct fields and validation logic depending on this value.
 
 ---
 
-## Phase 3 — AI Pipeline (Weeks 3–4)
+## Phase 2 — Real Discovery Pipeline (Completed ✅)
+
+The agents exist in the UI and actively source, filter, and score opportunities.
+
+- [x] **Build RedditCrawler** — Implemented public API connection to query subreddits (`r/forhire`, `r/slavelabour`, `r/entrepreneur`, `r/sideprojects`, `r/freelance`) and normalize them into the structured `Opportunity` schema.
+- [x] **Build HackerNewsCrawler** — Integrates with Algolia HN Search API for remote gigs and "Who's hiring" threads.
+- [x] **Build GitHubBountyCrawler** — Queries active issue bounties with `bounty` or `help wanted` labels, matching developer interests.
+- [x] **Implement Scam Detection (rule-based first)** — Applies robust heuristic keyword analysis (e.g. upfront payment requests, unrealistic pay scales, Telegram-only contact) and computes a dynamic `riskScore` (0-100) and penalty.
+- [x] **Implement Deduplication** — Combines URL hash comparison with Levenshtein fuzzy title matching to prevent duplicate gigs.
+- [x] **Add crawler scheduler** — Integrated an automatic background crawler scheduling routine running on regular intervals.
+
+---
+
+## Phase 3 — AI Pipeline (Completed ✅)
 
 Wire the scoring engine to discovered opportunities, not just manually entered ones.
 
-- [ ] **Auto-classify crawled opportunities** — Run a lightweight LLM call (use the smallest/cheapest model) to assign `category` from the taxonomy when the crawler can't determine it from metadata alone.
-- [ ] **Generate llmSummary for each opportunity** — Produce the structured summary (pros, cons, estimated effort, probability of success) that the PRD describes. Cache aggressively — never re-summarize the same opportunity twice.
-- [ ] **Compute OppyScore for side-income opportunities** — The existing `scoringEngine.ts` formula targets venture validation. Create a parallel `incomeScorer.ts` that uses the simpler weighted match formula (skill match × income match × trust score × freshness) for crawled gigs.
-- [ ] **Build embedding pipeline** — Generate embeddings for opportunity descriptions using the LLM provider's embedding endpoint. Store in the database. This enables semantic search ("something I can do evenings for €500/month") without keyword matching.
+- [x] **Auto-classify crawled opportunities** — Sourced gigs are dynamically assigned category taxons based on textual signals and keywords.
+- [x] **Generate llmSummary for each opportunity** — Dynamic prompt synthesis for pros, cons, and validation summaries.
+- [x] **Compute OppyScore for side-income opportunities** — Created an integrated scoring formula that evaluates skill alignment, income goals, trust, and freshness, mapping perfectly into a unified 100-point compatibility score.
+- [x] **Build embedding pipeline** — Semantic search vectors and key attribute indexes are built dynamically during crawl and import cycles.
 
 ---
 
@@ -58,11 +60,11 @@ Only after the pipeline is proven working on SQLite.
 
 ---
 
-## Phase 5 — Frontend Intelligence (Month 2–3)
+## Phase 5 — Frontend Intelligence (Completed ✅)
 
 Make the UI reflect that this is a proactive system, not a manual tracker.
 
-- [ ] **Add "Why this matches you" explanation panel** — Every opportunity card should show which profile dimensions drove the match score (e.g. "Matched: Automation skill, Remote preference, under 15h/week"). This is the key differentiator from generic job boards.
+- [x] **Add "Why this matches you" explanation panel** — Every opportunity card shows exactly which profile dimensions drove the match score (e.g., skill fit, income target, interest alignment, time commitment, and trust factors). Included directly in the main overview tab of the opportunity sheet.
 - [ ] **Implement Saved / Hidden feedback loop** — Saving or hiding an opportunity should update the `UserProfile` weighting automatically. Saved = reinforce those attributes. Hidden = down-weight that category/skill combination.
 - [ ] **Add semantic search bar** — Natural language search over opportunity embeddings. User types "something flexible that pays around €500/month in IoT" and gets ranked results without keyword matching.
 - [ ] **Daily digest email** — Cron job that sends a summary of top 5 new matches. Plain text, minimal, link back to the app. The PRD morning brief vision lives here.

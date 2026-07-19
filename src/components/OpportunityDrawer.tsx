@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, BarChart2, ShieldAlert, Clock, Send, FlaskConical, Save, RefreshCw, Copy, Check, DollarSign, MessageSquare, ArrowUpRight, Plus, Trash2, CheckCircle, AlertTriangle, Mic, Square, TrendingUp, Coins, Percent } from 'lucide-react';
-import { Opportunity, Experiment, Stage } from '../types';
-import { computeOppyScore } from '../services/scoringEngine';
+import { X, FileText, BarChart2, ShieldAlert, Clock, Send, FlaskConical, Save, RefreshCw, Copy, Check, DollarSign, MessageSquare, ArrowUpRight, Plus, Trash2, CheckCircle, AlertTriangle, Mic, Square, TrendingUp, Coins, Percent, Sparkles } from 'lucide-react';
+import { Opportunity, Experiment, Stage, UserProfile } from '../types';
+import { computeOppyScore, getMatchExplanation } from '../services/scoringEngine';
 import { transcribeAndAnalyzeInterview } from '../services/api';
 
 interface OpportunityDrawerProps {
@@ -10,6 +10,7 @@ interface OpportunityDrawerProps {
   onSave: (updated: Opportunity) => Promise<void>;
   onGenerateArtifacts: (id: string) => Promise<Opportunity>;
   onDelete: (id: string) => Promise<void>;
+  userProfile?: UserProfile;
 }
 
 export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
@@ -17,7 +18,8 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
   onClose,
   onSave,
   onGenerateArtifacts,
-  onDelete
+  onDelete,
+  userProfile
 }) => {
   const [opp, setOpp] = useState<Opportunity>(JSON.parse(JSON.stringify(initialOpp)));
   const [activeTab, setActiveTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json'>('overview');
@@ -432,6 +434,42 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
           {/* TAB 1: OVERVIEW & EVIDENCE METRICS */}
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-in fade-in duration-300">
+              {/* "Why this matches you" Panel */}
+              {userProfile && (
+                <div className="bg-gradient-to-br from-violet-50 to-indigo-50/50 border border-violet-200/80 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+                    <Sparkles className="w-24 h-24 text-violet-600" />
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-violet-100 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="bg-violet-600 text-white p-1.5 rounded-lg">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-sm text-neutral-900 tracking-tight">Intelligence Layer: Why This Matches You</h3>
+                        <p className="text-[10px] font-mono text-neutral-500 uppercase mt-0.5">Automated Profiler Compatibility Evaluation</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-mono text-neutral-500">Compatibility Score:</span>
+                      <span className="px-3 py-1 rounded-xl font-mono font-black text-xs bg-violet-600 text-white shadow-sm">
+                        {opp.matchScore !== undefined ? `${opp.matchScore}% Match` : 'Unrated'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {getMatchExplanation(opp, userProfile).map((bullet, idx) => (
+                      <div key={idx} className="flex items-start space-x-2.5">
+                        <span className="text-violet-500 mt-1 shrink-0 font-mono text-[10px]">◆</span>
+                        <p className="text-xs font-sans text-neutral-700 leading-relaxed font-medium">{bullet}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-mono font-bold text-neutral-500 tracking-tight">PROBLEM STATEMENT</label>

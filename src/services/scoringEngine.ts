@@ -294,3 +294,93 @@ export function computeMatchScore(opp: Opportunity, profile: UserProfile): numbe
   const totalScore = Math.round(skillScore + incomeScore + interestScore + trustScore + timeScore + freshnessScore);
   return Math.max(0, Math.min(100, totalScore));
 }
+
+/**
+ * Generates an array of short, descriptive explanations for why an opportunity matches the user profile.
+ */
+export function getMatchExplanation(opp: Opportunity, profile: UserProfile): string[] {
+  const explanations: string[] = [];
+  if (!profile) return ['Good baseline opportunity profile matching general ecosystem attributes.'];
+
+  // 1. Skill Match
+  const userSkills = profile.skills || [];
+  if (opp.skills && opp.skills.length > 0) {
+    const matched = opp.skills.filter(s => 
+      userSkills.some(ps => ps.toLowerCase() === s.toLowerCase())
+    );
+    if (matched.length > 0) {
+      explanations.push(`Skill fit: Matches expertise in ${matched.join(', ')}.`);
+    } else {
+      explanations.push('Alternative skillset: Good expansion avenue to leverage adjacent developer capabilities.');
+    }
+  } else if (userSkills.length > 0) {
+    const textToSearch = `${opp.name} ${opp.tagline} ${opp.description} ${opp.problem} ${opp.solution}`.toLowerCase();
+    const matched = userSkills.filter(s => textToSearch.includes(s.toLowerCase()));
+    if (matched.length > 0) {
+      explanations.push(`Profile overlap: Text content aligns with your skills in ${matched.join(', ')}.`);
+    }
+  }
+
+  // 2. Income Match
+  const incomeGoal = profile.incomeGoal || 2500;
+  if (opp.incomeEstimate) {
+    const avgIncome = (opp.incomeEstimate.min + opp.incomeEstimate.max) / 2;
+    if (avgIncome >= incomeGoal) {
+      explanations.push(`Income target: Est. revenue ${opp.incomeEstimate.currency}${avgIncome}/mo meets or exceeds your monthly goal of ${opp.incomeEstimate.currency}${incomeGoal}.`);
+    } else {
+      explanations.push(`Income contribution: Est. revenue ${opp.incomeEstimate.currency}${avgIncome}/mo supports a solid portion of your monthly ${opp.incomeEstimate.currency}${incomeGoal} target.`);
+    }
+  } else if (opp.scores?.iqi?.willingness_to_pay) {
+    const wtp = opp.scores.iqi.willingness_to_pay;
+    if (wtp >= 7) {
+      explanations.push(`High validation signal: Monetization is supported by strong willingness-to-pay potential (rated ${wtp}/10).`);
+    }
+  }
+
+  // 3. Interest Match
+  if (profile.interests) {
+    const interestKeywords = profile.interests
+      .toLowerCase()
+      .split(/[\s,.-]+/)
+      .filter(w => w.length > 3 && !['with', 'your', 'that', 'this', 'from', 'have', 'tech', 'custom', 'automation', 'business', 'businesses'].includes(w));
+    
+    if (interestKeywords.length > 0) {
+      const textToSearch = `${opp.name} ${opp.tagline} ${opp.description} ${opp.problem} ${opp.solution}`.toLowerCase();
+      const matched = interestKeywords.filter(k => textToSearch.includes(k));
+      if (matched.length > 0) {
+        explanations.push(`Interest alignment: Core theme strongly resonates with your focus in "${matched.slice(0, 3).join(', ')}".`);
+      }
+    }
+  }
+
+  // 4. Time Match
+  const timeAvailable = profile.timeAvailable || 15;
+  if (opp.estimatedHours !== undefined) {
+    if (opp.estimatedHours <= timeAvailable) {
+      explanations.push(`Time commitment: Requires approx. ${opp.estimatedHours} hrs/wk, fitting comfortably within your ${timeAvailable} hrs/wk window.`);
+    } else {
+      explanations.push(`Time constraint: Demands ${opp.estimatedHours} hrs/wk, requiring careful planning relative to your ${timeAvailable} hrs/wk preference.`);
+    }
+  }
+
+  // 5. Trust Match
+  const trustVal = opp.trustScore !== undefined ? opp.trustScore : 75;
+  if (trustVal >= 80) {
+    explanations.push(`High trust: Source platform and signal are verified with high initial credentials (${trustVal}% trust factor).`);
+  }
+
+  // 6. Freshness
+  try {
+    const updatedMs = opp.updated ? new Date(opp.updated).getTime() : new Date(opp.created || Date.now()).getTime();
+    const daysSinceUpdate = (Date.now() - updatedMs) / (1000 * 60 * 60 * 24);
+    if (daysSinceUpdate <= 2) {
+      explanations.push('Fresh lead: Discovered recently, maximizing early outreach response rates.');
+    }
+  } catch {}
+
+  if (explanations.length === 0) {
+    explanations.push('General alignment: Fits general parameters for low-risk side income and experimentation.');
+  }
+
+  return explanations;
+}
