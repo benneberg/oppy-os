@@ -10,28 +10,30 @@
 - [x] **Export Feature** — JSON export button in pipeline header for backup/sharing
 - [x] **Interview Transcription** — MediaRecorder-based audio capture → structured metric extraction
 - [x] **Dynamic Pricing Sandbox** — LTV/CAC slider simulator alongside monetization descriptions
-- [x] **Stalled Projects Detection** — Daily Dashboard feature identifying stalled projects with brief reasons and recommended actions (Re-evaluate Hypothesis, Attempt Outreach, Archive)
-- [x] **Refactored OppyScore Algorithm** — Weighted 'Evidence' metrics higher and integrated a risk re-evaluation system where 'Killer Mode' risks are reduced by successful validation experiments (Continue decisions)
 
 ---
 
-## Phase 1 — Foundation Fixes (Completed ✅)
+## Phase 1 — Foundation Fixes (Next 72 Hours)
 
-- [x] **Replace JSON file storage with SQLite** — SQLite via `better-sqlite3` fully implemented with WAL mode enabled.
-- [x] **Wire UserProfile into match scoring** — Dynamic match scores computed from UserProfile using the PRD weighted formula.
-- [x] **Make match score visible on opportunity cards** — Match score badge added to PipelineBoard cards.
-- [x] **Fix Opportunity type identity crisis** — Type discriminant (`'venture' | 'opportunity'`) added and integrated in board and drawer rendering.
+These unblock everything else. Do these before adding any new features.
+
+- [ ] **Replace JSON file storage with SQLite** — `fs.writeFileSync` to a flat file will corrupt data under concurrent writes (crawler + UI hitting the server simultaneously). SQLite via `better-sqlite3` is a zero-infra swap that eliminates the race condition. PostgreSQL comes later.
+- [ ] **Wire UserProfile into match scoring** — `matchScore` exists on `Opportunity` but isn't computed from the actual `UserProfile`. Implement the weighted formula from the PRD (35% skill match, 20% income match, 15% interest match, 10% trust score, 10% time match, 5% freshness) and re-rank the portfolio feed whenever the profile changes.
+- [ ] **Make match score visible on opportunity cards** — Currently the `matchScore` field is invisible in the UI. Add a match badge to `PipelineBoard` cards so users see why something surfaced.
+- [ ] **Fix Opportunity type identity crisis** — The `Opportunity` type is trying to be both a startup idea tracker (IQI, validation interviews, experiments) and a side-income card (trustScore, applicationDeadline, incomeEstimate). Add a `type` discriminant (`'venture' | 'opportunity'`) so components can render the right fields and validation logic without branching hacks.
 
 ---
 
-## Phase 2 — Real Discovery Pipeline (Completed ✅)
+## Phase 2 — Real Discovery Pipeline (Next 2 Weeks)
 
-- [x] **Build RedditCrawler** — Sourcing jobs dynamically from subreddits using public API.
-- [x] **Build HackerNewsCrawler** — Sourcing remote freelance gigs from Algolia HN Search.
-- [x] **Build GitHubBountyCrawler** — Sourcing open-source issue bounties.
-- [x] **Implement Scam Detection (rule-based first)** — Scams filtered and penalized using heuristic keyword detection.
-- [x] **Implement Deduplication** — Levenshtein fuzzy title deduplication.
-- [x] **Add crawler scheduler** — Automated background updates handled by `node-cron`.
+The agents exist in the UI but do nothing. This phase makes Scout real.
+
+- [ ] **Build RedditCrawler** — Use the Reddit JSON API (no auth needed for public posts). Target subreddits: `r/forhire`, `r/slavelabour`, `r/entrepreneur`, `r/sideprojects`, `r/freelance`. Normalize results into the `Opportunity` schema.
+- [ ] **Build HackerNewsCrawler** — Poll the Algolia HN Search API for "Who's hiring", "Freelancer? Seeking freelancer", and "Ask HN: Who wants to be hired" threads monthly. Free, no scraping.
+- [ ] **Build GitHubBountyCrawler** — Query GitHub Issues API with labels `bounty`, `help wanted`, `up-for-grabs`. Filter by language tags matching user skills.
+- [ ] **Implement Scam Detection (rule-based first)** — Before touching LLMs, apply fast heuristic rules: upfront payment keywords, unrealistic salary claims (>3× market rate), Telegram-only contact, missing company name, domain age < 30 days. Assign a `riskScore` from 0–10.
+- [ ] **Implement Deduplication** — URL hash first (fastest), then title fuzzy match using Levenshtein distance, then flag for LLM comparison only when fuzzy score > 0.8. Prevents the same Upwork job appearing 3× from different crawlers.
+- [ ] **Add crawler scheduler** — Simple `node-cron` job: high-priority sources every hour, medium every 6h, low daily. Store last-crawled timestamp per source in the database.
 
 ---
 
