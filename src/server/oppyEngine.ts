@@ -665,3 +665,62 @@ Extract:
     };
   }
 }
+
+export async function enrichOpportunityWithLLM(opp: Opportunity, config?: LLMConfig): Promise<Opportunity> {
+  const provider = config?.provider || 'gemini';
+  const apiKey = config?.apiKey || (provider === 'gemini' ? process.env.GEMINI_API_KEY : provider === 'groq' ? process.env.GROQ_API_KEY : process.env.OPENROUTER_API_KEY);
+
+  if (!apiKey) {
+    // Fallback heuristic summary when no API key is present
+    opp.llmSummary = `Sourced from ${opp.source || 'Web'}. Highly relevant gig involving skills: ${(opp.skills || []).join(', ')}. Est. pay: ${opp.incomeEstimate ? `$${opp.incomeEstimate.min}-${opp.incomeEstimate.max}` : 'contract/variable'}.`;
+    opp.summarized = true;
+    return opp;
+  }
+
+  try {
+    const prompt = `You are Oppy, the Founder Decision Operating System. Enrich this crawled/sourced side-income opportunity with a professional assessment.
+Name: ${opp.name}
+Tagline: ${opp.tagline}
+Source: ${opp.source}
+Description: ${opp.description}
+
+Analyze this gig and return a JSON object with:
+1. llmSummary: A brief 2-sentence summary of the pros, cons, and direct validation strategy for this opportunity.
+2. problem: A refined, clear statement of what the client actually needs.
+3. solution: A refined statement of how a developer/consultant can solve it.
+4. target_user: The actual economic buyer or manager title.
+5. workaround: What they are likely doing today.
+6. monetization: A professional monetization or bidding rate suggestion (e.g. $500 project, $75/hr).`;
+
+    const jsonSchema = {
+      type: "object",
+      properties: {
+        llmSummary: { type: "string" },
+        problem: { type: "string" },
+        solution: { type: "string" },
+        target_user: { type: "string" },
+        workaround: { type: "string" },
+        monetization: { type: "string" }
+      },
+      required: ['llmSummary', 'problem', 'solution', 'target_user', 'workaround', 'monetization']
+    };
+
+    const text = await callAIModel(config, "You are Oppy, the Founder Decision Operating System.", prompt, jsonSchema);
+    const data = JSON.parse(text || '{}');
+
+    if (data.llmSummary) opp.llmSummary = data.llmSummary;
+    if (data.problem) opp.problem = data.problem;
+    if (data.solution) opp.solution = data.solution;
+    if (data.target_user) opp.target_user = data.target_user;
+    if (data.workaround) opp.workaround = data.workaround;
+    if (data.monetization) opp.monetization = data.monetization;
+
+    opp.summarized = true;
+    return opp;
+  } catch (err) {
+    console.error(`Enrichment failed for ${opp.id}:`, err);
+    opp.llmSummary = `Sourced from ${opp.source || 'Web'}. Needs assessment.`;
+    opp.summarized = true;
+    return opp;
+  }
+}

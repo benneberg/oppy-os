@@ -139,7 +139,7 @@ async function startServer() {
       // 2. Active Scout Fleet live crawls (Reddit, Hacker News, GitHub)
       try {
         console.log('[SCOUT FLEET] Running active multi-source live crawler...');
-        const crawled = await runScoutFleet(portfolio, userProfile);
+        const crawled = await runScoutFleet(portfolio, userProfile, config);
         if (crawled.length > 0) {
           console.log(`[SCOUT FLEET] Successfully sourced ${crawled.length} matching jobs.`);
           portfolio = [...crawled, ...portfolio];

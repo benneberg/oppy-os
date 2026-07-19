@@ -302,6 +302,8 @@ export function getMatchExplanation(opp: Opportunity, profile: UserProfile): str
   const explanations: string[] = [];
   if (!profile) return ['Good baseline opportunity profile matching general ecosystem attributes.'];
 
+  const isOpportunity = opp.type === 'opportunity';
+
   // 1. Skill Match
   const userSkills = profile.skills || [];
   if (opp.skills && opp.skills.length > 0) {
@@ -310,7 +312,7 @@ export function getMatchExplanation(opp: Opportunity, profile: UserProfile): str
     );
     if (matched.length > 0) {
       explanations.push(`Skill fit: Matches expertise in ${matched.join(', ')}.`);
-    } else {
+    } else if (!isOpportunity) {
       explanations.push('Alternative skillset: Good expansion avenue to leverage adjacent developer capabilities.');
     }
   } else if (userSkills.length > 0) {
@@ -323,14 +325,14 @@ export function getMatchExplanation(opp: Opportunity, profile: UserProfile): str
 
   // 2. Income Match
   const incomeGoal = profile.incomeGoal || 2500;
-  if (opp.incomeEstimate) {
+  if (opp.incomeEstimate && (opp.incomeEstimate.min > 0 || opp.incomeEstimate.max > 0)) {
     const avgIncome = (opp.incomeEstimate.min + opp.incomeEstimate.max) / 2;
     if (avgIncome >= incomeGoal) {
       explanations.push(`Income target: Est. revenue ${opp.incomeEstimate.currency}${avgIncome}/mo meets or exceeds your monthly goal of ${opp.incomeEstimate.currency}${incomeGoal}.`);
     } else {
       explanations.push(`Income contribution: Est. revenue ${opp.incomeEstimate.currency}${avgIncome}/mo supports a solid portion of your monthly ${opp.incomeEstimate.currency}${incomeGoal} target.`);
     }
-  } else if (opp.scores?.iqi?.willingness_to_pay) {
+  } else if (!isOpportunity && opp.scores?.iqi?.willingness_to_pay) {
     const wtp = opp.scores.iqi.willingness_to_pay;
     if (wtp >= 7) {
       explanations.push(`High validation signal: Monetization is supported by strong willingness-to-pay potential (rated ${wtp}/10).`);
@@ -355,7 +357,7 @@ export function getMatchExplanation(opp: Opportunity, profile: UserProfile): str
 
   // 4. Time Match
   const timeAvailable = profile.timeAvailable || 15;
-  if (opp.estimatedHours !== undefined) {
+  if (opp.estimatedHours !== undefined && opp.estimatedHours > 0) {
     if (opp.estimatedHours <= timeAvailable) {
       explanations.push(`Time commitment: Requires approx. ${opp.estimatedHours} hrs/wk, fitting comfortably within your ${timeAvailable} hrs/wk window.`);
     } else {
@@ -364,17 +366,21 @@ export function getMatchExplanation(opp: Opportunity, profile: UserProfile): str
   }
 
   // 5. Trust Match
-  const trustVal = opp.trustScore !== undefined ? opp.trustScore : 75;
-  if (trustVal >= 80) {
-    explanations.push(`High trust: Source platform and signal are verified with high initial credentials (${trustVal}% trust factor).`);
+  if (opp.trustScore !== undefined && opp.trustScore >= 80) {
+    explanations.push(`High trust: Source platform and signal are verified with high initial credentials (${opp.trustScore}% trust factor).`);
   }
 
   // 6. Freshness
   try {
-    const updatedMs = opp.updated ? new Date(opp.updated).getTime() : new Date(opp.created || Date.now()).getTime();
-    const daysSinceUpdate = (Date.now() - updatedMs) / (1000 * 60 * 60 * 24);
-    if (daysSinceUpdate <= 2) {
-      explanations.push('Fresh lead: Discovered recently, maximizing early outreach response rates.');
+    const dateStr = opp.updated || opp.created;
+    if (dateStr) {
+      const updatedMs = new Date(dateStr).getTime();
+      if (!isNaN(updatedMs)) {
+        const daysSinceUpdate = (Date.now() - updatedMs) / (1000 * 60 * 60 * 24);
+        if (daysSinceUpdate <= 2) {
+          explanations.push('Fresh lead: Discovered recently, maximizing early outreach response rates.');
+        }
+      }
     }
   } catch {}
 

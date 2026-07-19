@@ -22,10 +22,18 @@ try {
       data TEXT NOT NULL,
       type TEXT,
       category TEXT,
+      summarized INTEGER DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
   `).run();
+
+  // Try to add summarized column to opportunities if it doesn't exist yet
+  try {
+    db.prepare('ALTER TABLE opportunities ADD COLUMN summarized INTEGER DEFAULT 0').run();
+  } catch (err) {
+    // Column already exists, ignore
+  }
 
   db.prepare(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -60,8 +68,8 @@ export function getOpportunities(): Opportunity[] {
 export function saveOpportunity(opp: Opportunity): void {
   try {
     const stmt = db.prepare(`
-      INSERT OR REPLACE INTO opportunities (id, data, type, category, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO opportunities (id, data, type, category, summarized, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const now = new Date().toISOString();
     stmt.run(
@@ -69,6 +77,7 @@ export function saveOpportunity(opp: Opportunity): void {
       JSON.stringify(opp),
       opp.type || 'venture',
       opp.category,
+      opp.summarized ? 1 : 0,
       opp.created || now,
       opp.updated || now
     );
@@ -88,8 +97,8 @@ export function deleteOpportunity(id: string): void {
 export function saveAllOpportunities(opps: Opportunity[]): void {
   try {
     const insert = db.prepare(`
-      INSERT OR REPLACE INTO opportunities (id, data, type, category, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO opportunities (id, data, type, category, summarized, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     
     // Use transaction for massive performance boost and safety
@@ -101,6 +110,7 @@ export function saveAllOpportunities(opps: Opportunity[]): void {
           JSON.stringify(opp),
           opp.type || 'venture',
           opp.category,
+          opp.summarized ? 1 : 0,
           opp.created || now,
           opp.updated || now
         );

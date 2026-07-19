@@ -135,6 +135,7 @@ export interface Opportunity {
   applicationDeadline?: string;
   llmSummary?: string;
   matchScore?: number;
+  summarized?: boolean;
 }
 
 export interface AIAgentStatus {

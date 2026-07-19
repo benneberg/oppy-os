@@ -1,7 +1,8 @@
 import cron from 'node-cron';
-import { Opportunity } from '../types';
+import { Opportunity, LLMConfig } from '../types';
 import { saveOpportunity, getOpportunities } from './db';
 import { computeMatchScore } from '../services/scoringEngine';
+import { enrichOpportunityWithLLM } from './oppyEngine';
 
 // -------------------------------------------------------------
 // Fuzzy Deduplication & Levenshtein Distance
@@ -444,7 +445,7 @@ export async function crawlGitHubBounty(): Promise<Opportunity[]> {
 // Combined Sourcing Runner (with Deduplication)
 // -------------------------------------------------------------
 
-export async function runScoutFleet(existingOpps: Opportunity[], profile?: any): Promise<Opportunity[]> {
+export async function runScoutFleet(existingOpps: Opportunity[], profile?: any, config?: LLMConfig): Promise<Opportunity[]> {
   console.log('[SCOUT FLEET] Dispatched Reddit, HackerNews, and GitHub crawlers...');
   
   const [reddit, hn, github] = await Promise.all([
@@ -478,8 +479,23 @@ export async function runScoutFleet(existingOpps: Opportunity[], profile?: any):
     newOpps.push(item);
   }
 
-  console.log(`[SCOUT FLEET] Successfully sourced and filtered ${newOpps.length} opportunities!`);
-  return newOpps;
+  // 4. Automated LLM Enrichment Step
+  console.log(`[SCOUT FLEET] Sourced ${newOpps.length} raw candidates. Starting automated LLM enrichment step...`);
+  const enrichedOpps: Opportunity[] = [];
+  for (const item of newOpps) {
+    try {
+      console.log(`[SCOUT FLEET] Enriching: "${item.name}"`);
+      const enriched = await enrichOpportunityWithLLM(item, config);
+      enrichedOpps.push(enriched);
+    } catch (err) {
+      console.error(`[SCOUT FLEET] LLM enrichment failed for "${item.name}":`, err);
+      item.summarized = true; // Set flag to true to avoid infinite retry loops
+      enrichedOpps.push(item);
+    }
+  }
+
+  console.log(`[SCOUT FLEET] Successfully sourced, filtered, and LLM-enriched ${enrichedOpps.length} opportunities!`);
+  return enrichedOpps;
 }
 
 // -------------------------------------------------------------
@@ -503,8 +519,18 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
         newOpps.push(item);
       }
       if (newOpps.length > 0) {
-        saveCallback([...newOpps, ...existing]);
-        console.log(`[SCHEDULER] Committed ${newOpps.length} new Reddit opportunities.`);
+        const enrichedOpps: Opportunity[] = [];
+        for (const item of newOpps) {
+          try {
+            const enriched = await enrichOpportunityWithLLM(item);
+            enrichedOpps.push(enriched);
+          } catch (e) {
+            item.summarized = true;
+            enrichedOpps.push(item);
+          }
+        }
+        saveCallback([...enrichedOpps, ...existing]);
+        console.log(`[SCHEDULER] Committed ${enrichedOpps.length} new LLM-enriched Reddit opportunities.`);
       }
     } catch (err) {
       console.error('[SCHEDULER] Scheduled Reddit crawl error:', err);
@@ -529,8 +555,18 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
         newOpps.push(item);
       }
       if (newOpps.length > 0) {
-        saveCallback([...newOpps, ...existing]);
-        console.log(`[SCHEDULER] Committed ${newOpps.length} new daily HN/GH opportunities.`);
+        const enrichedOpps: Opportunity[] = [];
+        for (const item of newOpps) {
+          try {
+            const enriched = await enrichOpportunityWithLLM(item);
+            enrichedOpps.push(enriched);
+          } catch (e) {
+            item.summarized = true;
+            enrichedOpps.push(item);
+          }
+        }
+        saveCallback([...enrichedOpps, ...existing]);
+        console.log(`[SCHEDULER] Committed ${enrichedOpps.length} new daily HN/GH opportunities.`);
       }
     } catch (err) {
       console.error('[SCHEDULER] Scheduled daily crawls error:', err);
