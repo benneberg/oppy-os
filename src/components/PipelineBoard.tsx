@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, ArrowRight, ShieldAlert, Clock, CheckCircle2, DollarSign, MessageSquare, Filter, Search, ChevronRight, Archive, Sparkles } from 'lucide-react';
+import { Layers, ArrowRight, ShieldAlert, Clock, CheckCircle2, DollarSign, MessageSquare, Filter, Search, ChevronRight, Archive, Sparkles, ArrowUpRight } from 'lucide-react';
 import { Opportunity, Stage, Category } from '../types';
 
 interface PipelineBoardProps {
@@ -21,10 +21,33 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
   onSelectOpportunity,
   onPromoteStage
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    return localStorage.getItem('oppy_selected_category') || 'All';
+  });
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    return localStorage.getItem('oppy_search_query') || '';
+  });
+  const [minMatchScore, setMinMatchScore] = useState<number>(() => {
+    const val = localStorage.getItem('oppy_min_match_score');
+    return val !== null ? parseInt(val) : 0;
+  });
 
-  const uniqueCategories = Array.from(new Set(portfolio.map(p => p.category)));
+  const handleSetCategory = (cat: string) => {
+    setSelectedCategory(cat);
+    localStorage.setItem('oppy_selected_category', cat);
+  };
+
+  const handleSetSearchQuery = (q: string) => {
+    setSearchQuery(q);
+    localStorage.setItem('oppy_search_query', q);
+  };
+
+  const handleSetMinMatchScore = (score: number) => {
+    setMinMatchScore(score);
+    localStorage.setItem('oppy_min_match_score', String(score));
+  };
+
+  const uniqueCategories = Array.from(new Set(portfolio.map(p => p.category))) as string[];
   const allCategories = ['All', ...uniqueCategories];
 
   const filteredPortfolio = portfolio.filter(p => {
@@ -33,7 +56,8 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                           p.problem.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
                           p.target_user.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
+    const matchesMatchScore = p.matchScore === undefined || p.matchScore >= minMatchScore;
+    return matchesCat && matchesSearch && matchesMatchScore;
   });
 
   const getNextStage = (current: Stage): Stage | null => {
@@ -47,32 +71,53 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Top Filter Bar */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none max-w-[70%]">
-          <Filter className="w-4 h-4 text-neutral-400 shrink-0" />
-          <span className="text-xs font-mono text-neutral-500 font-semibold mr-2">CATEGORY:</span>
-          {allCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all whitespace-nowrap ${
-                selectedCategory === cat
-                  ? 'bg-neutral-900 text-white font-bold shadow-sm'
-                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 border border-neutral-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+      <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div className="flex flex-col gap-3 flex-1">
+          <div className="flex items-center space-x-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
+            <Filter className="w-4 h-4 text-neutral-400 shrink-0" />
+            <span className="text-xs font-mono text-neutral-500 font-semibold mr-2">CATEGORY:</span>
+            {allCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => handleSetCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all whitespace-nowrap ${
+                  selectedCategory === cat
+                    ? 'bg-neutral-900 text-white font-bold shadow-sm'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 border border-neutral-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Min Match Score Filter Slider */}
+          <div className="flex items-center space-x-3 text-xs font-mono text-neutral-700 bg-neutral-50 px-3.5 py-2 rounded-xl border border-neutral-200/60 max-w-xl">
+            <span className="font-semibold text-neutral-900 shrink-0">MIN MATCH:</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={minMatchScore}
+              onChange={e => handleSetMinMatchScore(parseInt(e.target.value))}
+              className="w-32 h-1 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-neutral-900 shrink-0"
+            />
+            <span className="font-bold text-indigo-700 shrink-0 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+              {minMatchScore}%+
+            </span>
+            <span className="text-[10px] text-neutral-400">
+              (Hides gigs & concepts below match threshold)
+            </span>
+          </div>
         </div>
 
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full md:w-72 self-end md:self-center">
           <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search opportunities..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => handleSetSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-900"
           />
         </div>
@@ -132,6 +177,11 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                             <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase truncate max-w-[100px]">
                               {opp.category}
                             </span>
+                            {opp.source && (
+                              <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shrink-0 uppercase">
+                                {opp.source}
+                              </span>
+                            )}
                             {opp.matchScore !== undefined && (
                               <span className="px-1.5 py-0.5 rounded font-bold bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
                                 {opp.matchScore}% Match
@@ -197,16 +247,29 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({
                           )}
                         </div>
 
-                        {/* Promote Button */}
-                        {nextStage && !isArchived && (
-                          <div className="pt-1 flex justify-end" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={() => onPromoteStage(opp, nextStage)}
-                              className="w-full py-1.5 px-2.5 rounded-lg bg-neutral-900 hover:bg-black text-white font-mono text-[10px] font-bold border border-transparent transition-all flex items-center justify-center space-x-1 shadow-sm group/btn"
-                            >
-                              <span>Promote to {nextStage}</span>
-                              <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                            </button>
+                        {/* Promote & Apply Buttons */}
+                        {(nextStage || opp.url) && !isArchived && (
+                          <div className="pt-1.5 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            {opp.url && (
+                              <a
+                                href={opp.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center justify-center space-x-1 py-1.5 px-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 font-mono text-[10px] font-bold shadow-sm"
+                              >
+                                <span>Apply / Open</span>
+                                <ArrowUpRight className="w-3.5 h-3.5 text-neutral-500" />
+                              </a>
+                            )}
+                            {nextStage && (
+                              <button
+                                onClick={() => onPromoteStage(opp, nextStage)}
+                                className="flex-1 py-1.5 px-2.5 rounded-lg bg-neutral-900 hover:bg-black text-white font-mono text-[10px] font-bold border border-transparent transition-all flex items-center justify-center space-x-1 shadow-sm group/btn"
+                              >
+                                <span>Promote to {nextStage}</span>
+                                <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

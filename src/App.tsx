@@ -37,6 +37,13 @@ export default function App() {
   });
   const [activeTab, setActiveTab] = useState<string>('morning');
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | undefined>(undefined);
+
+  const handleSelectOpportunity = (opp: Opportunity | null, tab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json') => {
+    setDrawerInitialTab(tab);
+    setSelectedOpp(opp);
+  };
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -83,7 +90,7 @@ export default function App() {
     if (window.confirm('Reset Oppy OS seed data back to canonical factory state?')) {
       await resetPortfolio();
       await loadAllData();
-      setSelectedOpp(null);
+      handleSelectOpportunity(null);
     }
   };
 
@@ -91,7 +98,7 @@ export default function App() {
     try {
       const saved = await saveOpportunity(updated);
       setPortfolio(prev => prev.map(p => p.id === saved.id ? saved : p));
-      setSelectedOpp(saved);
+      handleSelectOpportunity(saved);
       // Refresh morning metrics in background
       fetchPortfolio().then(d => setMorning(d.morning));
     } catch (err: any) {
@@ -103,7 +110,7 @@ export default function App() {
     try {
       await deleteOpportunity(id);
       setPortfolio(prev => prev.filter(p => p.id !== id));
-      setSelectedOpp(null);
+      handleSelectOpportunity(null);
       fetchPortfolio().then(d => setMorning(d.morning));
     } catch (err: any) {
       alert(err.message || 'Failed to delete folder');
@@ -114,7 +121,7 @@ export default function App() {
     const updated = await generateArtifacts(id);
     setPortfolio(prev => prev.map(p => p.id === updated.id ? updated : p));
     if (selectedOpp && selectedOpp.id === updated.id) {
-      setSelectedOpp(updated);
+      handleSelectOpportunity(updated);
     }
     return updated;
   };
@@ -182,7 +189,7 @@ export default function App() {
         {activeTab === 'morning' && morning && (
           <MorningCockpit
             morning={morning}
-            onSelectOpportunity={setSelectedOpp}
+            onSelectOpportunity={(opp, tab) => handleSelectOpportunity(opp, tab)}
             onRefreshBrief={handleRefreshBrief}
             onNavigateToTab={setActiveTab}
           />
@@ -206,14 +213,14 @@ export default function App() {
             portfolio={portfolio}
             profile={profile}
             onDiscoverNew={handleDiscover}
-            onSelectOpportunity={setSelectedOpp}
+            onSelectOpportunity={(opp) => handleSelectOpportunity(opp)}
           />
         )}
 
         {activeTab === 'pipeline' && (
           <PipelineBoard
             portfolio={portfolio}
-            onSelectOpportunity={setSelectedOpp}
+            onSelectOpportunity={(opp) => handleSelectOpportunity(opp)}
             onPromoteStage={handlePromoteStage}
           />
         )}
@@ -221,7 +228,7 @@ export default function App() {
         {activeTab === 'discover' && (
           <DiscoverLab
             onDiscover={handleDiscover}
-            onSelectOpportunity={setSelectedOpp}
+            onSelectOpportunity={(opp) => handleSelectOpportunity(opp)}
           />
         )}
 
@@ -234,7 +241,7 @@ export default function App() {
         {activeTab === 'cli' && (
           <CLICockpit
             portfolio={portfolio}
-            onSelectOpportunity={setSelectedOpp}
+            onSelectOpportunity={(opp) => handleSelectOpportunity(opp)}
             onSaveOpportunity={handleSaveOpp}
           />
         )}
@@ -260,11 +267,12 @@ export default function App() {
       {selectedOpp && (
         <OpportunityDrawer
           opportunity={selectedOpp}
-          onClose={() => setSelectedOpp(null)}
+          onClose={() => handleSelectOpportunity(null)}
           onSave={handleSaveOpp}
           onGenerateArtifacts={handleGenerateArtifacts}
           onDelete={handleDeleteOpp}
           userProfile={profile}
+          initialTab={drawerInitialTab}
         />
       )}
 

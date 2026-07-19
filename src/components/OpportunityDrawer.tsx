@@ -11,6 +11,7 @@ interface OpportunityDrawerProps {
   onGenerateArtifacts: (id: string) => Promise<Opportunity>;
   onDelete: (id: string) => Promise<void>;
   userProfile?: UserProfile;
+  initialTab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json';
 }
 
 export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
@@ -19,13 +20,29 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
   onSave,
   onGenerateArtifacts,
   onDelete,
-  userProfile
+  userProfile,
+  initialTab
 }) => {
   const [opp, setOpp] = useState<Opportunity>(JSON.parse(JSON.stringify(initialOpp)));
   const [activeTab, setActiveTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json'>('overview');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedArtifact, setCopiedArtifact] = useState<Record<string, boolean>>({});
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedArtifact(prev => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      setCopiedArtifact(prev => ({ ...prev, [id]: false }));
+    }, 2000);
+  };
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Dynamic Pricing Sandbox State
   const [arpu, setArpu] = useState(150);
@@ -570,6 +587,47 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
                 </div>
               </div>
 
+              {/* Experiments Log Summary Card */}
+              <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+                  <span className="text-xs font-display uppercase tracking-wider text-neutral-900 font-bold flex items-center space-x-2">
+                    <FlaskConical className="w-4 h-4 text-neutral-900" />
+                    <span>Experiment Logs Status ({opp.experiments.length} total)</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-500 uppercase">Live Validation Iterations</span>
+                </div>
+                {opp.experiments.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+                    <div className="bg-white p-3 rounded-xl border border-neutral-200 shadow-sm flex flex-col justify-between">
+                      <span className="text-emerald-700 font-bold">CONTINUE</span>
+                      <span className="text-lg font-bold mt-1 text-neutral-900">
+                        {opp.experiments.filter(e => e.decision === 'Continue').length}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-neutral-200 shadow-sm flex flex-col justify-between">
+                      <span className="text-amber-700 font-bold">PIVOT</span>
+                      <span className="text-lg font-bold mt-1 text-neutral-900">
+                        {opp.experiments.filter(e => e.decision === 'Pivot').length}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-neutral-200 shadow-sm flex flex-col justify-between">
+                      <span className="text-neutral-500 font-bold font-mono">PAUSE</span>
+                      <span className="text-lg font-bold mt-1 text-neutral-900 font-mono">
+                        {opp.experiments.filter(e => e.decision === 'Pause').length}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-rose-200 shadow-sm flex flex-col justify-between">
+                      <span className="text-rose-700 font-bold">KILL</span>
+                      <span className="text-lg font-bold mt-1 text-neutral-900">
+                        {opp.experiments.filter(e => e.decision === 'Kill').length}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-neutral-500 font-sans italic">No experiments logged yet. Log your first validation experiment under the Experiments tab.</p>
+                )}
+              </div>
+
               {/* Conditional Rendering: Side Income Specific Metadata OR SaaS Unit Economics Simulator */}
               {opp.type === 'opportunity' ? (
                 <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 space-y-4">
@@ -992,6 +1050,25 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
                 </p>
               </div>
 
+              {/* Evidence Weight Progress Bar */}
+              <div className="bg-white border border-neutral-200 rounded-2xl p-5 space-y-3 shadow-sm">
+                <div className="flex justify-between items-center text-xs font-mono font-semibold text-neutral-800">
+                  <span>Evidence Weight Paradigm</span>
+                  <span className="text-indigo-600">
+                    {opp.validation.evidence_weight_percent ?? 0}% Empirical / {100 - (opp.validation.evidence_weight_percent ?? 0)}% Heuristic
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden border border-neutral-200">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full transition-all duration-500"
+                    style={{ width: `${opp.validation.evidence_weight_percent ?? 0}%` }}
+                  />
+                </div>
+                <p className="text-[10.5px] font-mono text-neutral-500 leading-normal">
+                  As you log real customer interviews, landing page signups, pre-orders, and validation experiments, the scoring engine automatically shifts weighting from initial subjective heuristics (IQI) to actual empirical evidence.
+                </p>
+              </div>
+
               <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 space-y-6">
                 <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
                   <div>
@@ -1074,7 +1151,25 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
 
               {/* Landing Page Preview */}
               <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-5 space-y-3">
-                <h4 className="text-xs font-display font-bold text-neutral-900 uppercase tracking-wider">landing_page.md</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-display font-bold text-neutral-900 uppercase tracking-wider">landing_page.md</h4>
+                  <button
+                    onClick={() => copyToClipboard(opp.artifacts.landing_page_md || '', 'landing')}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border border-neutral-200 text-xs font-mono shadow-sm"
+                  >
+                    {copiedArtifact['landing'] ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <pre className="p-4 bg-white rounded-xl text-xs font-mono text-neutral-800 whitespace-pre-wrap overflow-x-auto border border-neutral-200 shadow-sm leading-relaxed">
                   {opp.artifacts.landing_page_md || '# Landing Page Template\nClick regenerate to build canonical landing copy.'}
                 </pre>
@@ -1082,7 +1177,25 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
 
               {/* 8 Interview Questions */}
               <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-5 space-y-3">
-                <h4 className="text-xs font-display font-bold text-neutral-900 uppercase tracking-wider">interview.md (Canonical 8 Questions)</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-display font-bold text-neutral-900 uppercase tracking-wider">interview.md (Canonical 8 Questions)</h4>
+                  <button
+                    onClick={() => copyToClipboard(opp.artifacts.interview_guide_md || '', 'interview')}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border border-neutral-200 text-xs font-mono shadow-sm"
+                  >
+                    {copiedArtifact['interview'] ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <pre className="p-4 bg-white rounded-xl text-xs font-mono text-neutral-800 whitespace-pre-wrap overflow-x-auto border border-neutral-200 shadow-sm leading-relaxed">
                   {opp.artifacts.interview_guide_md || '1. How do you solve this today?\n2. What frustrates you most?\n3. What does this cost?\n4. What happens if nothing changes?'}
                 </pre>
@@ -1095,15 +1208,43 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
                   {opp.artifacts.linkedin_outreach?.map((msg, i) => (
                     <div key={i} className="p-3.5 bg-white rounded-xl text-xs font-sans text-neutral-800 border border-neutral-200 flex justify-between items-center gap-4 shadow-sm">
                       <span className="leading-relaxed">{msg}</span>
-                      <button onClick={() => navigator.clipboard.writeText(msg)} className="text-neutral-400 hover:text-neutral-900 shrink-0 p-1">
-                        <Copy className="w-4 h-4" />
+                      <button
+                        onClick={() => copyToClipboard(msg, `li-${i}`)}
+                        className="text-neutral-400 hover:text-neutral-900 shrink-0 p-1 rounded bg-neutral-50 border border-neutral-100"
+                      >
+                        {copiedArtifact[`li-${i}`] ? (
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   ))}
                   {opp.artifacts.cold_email && (
-                    <pre className="p-4 bg-white rounded-xl text-xs font-mono text-neutral-800 whitespace-pre-wrap border border-neutral-200 shadow-sm leading-relaxed">
-                      {opp.artifacts.cold_email}
-                    </pre>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-mono text-neutral-400">COLD EMAIL TEMPLATE</span>
+                        <button
+                          onClick={() => copyToClipboard(opp.artifacts.cold_email || '', 'email')}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border border-neutral-200 text-xs font-mono shadow-sm"
+                        >
+                          {copiedArtifact['email'] ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-600">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <pre className="p-4 bg-white rounded-xl text-xs font-mono text-neutral-800 whitespace-pre-wrap border border-neutral-200 shadow-sm leading-relaxed">
+                        {opp.artifacts.cold_email}
+                      </pre>
+                    </div>
                   )}
                 </div>
               </div>

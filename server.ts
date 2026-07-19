@@ -22,6 +22,36 @@ import {
 
 dotenv.config();
 
+// In-memory rate limiting map for sliding window
+const rateLimitMap = new Map<string, number[]>();
+
+function rateLimitMiddleware(windowMs: number, maxRequests: number) {
+  return (req: any, res: any, next: any) => {
+    const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'global');
+    const now = Date.now();
+    
+    if (!rateLimitMap.has(ip)) {
+      rateLimitMap.set(ip, []);
+    }
+    
+    const timestamps = rateLimitMap.get(ip)!;
+    // Keep only timestamps within the sliding window
+    const activeTimestamps = timestamps.filter(t => now - t < windowMs);
+    
+    if (activeTimestamps.length >= maxRequests) {
+      return res.status(429).json({
+        error: 'Too many discovery requests. Please wait a moment before trying again to avoid duplicate entries.'
+      });
+    }
+    
+    activeTimestamps.push(now);
+    rateLimitMap.set(ip, activeTimestamps);
+    next();
+  };
+}
+
+const discoverRateLimiter = rateLimitMiddleware(5000, 1); // 1 request per 5 seconds
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -126,7 +156,7 @@ async function startServer() {
     res.json({ success: true, userProfile });
   });
 
-  app.post('/api/discover', async (req, res) => {
+  app.post('/api/discover', discoverRateLimiter, async (req, res) => {
     const { rawSignal, category } = req.body;
     if (!rawSignal) return res.status(400).json({ error: 'Missing rawSignal' });
     try {

@@ -1,6 +1,60 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Opportunity, Category, MorningDashboardAnswers, IQIScores, KillerModeScores, TTFDDetails, LLMConfig } from '../types';
 import { computeOppyScore } from '../services/scoringEngine.ts';
+import { z } from 'zod';
+
+function sanitizeString(str: string, maxLength: number = 1000): string {
+  if (!str) return '';
+  // Strip control characters
+  const clean = str.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+  // Simple XSS defense: strip basic HTML tags
+  const stripHtml = clean.replace(/<[^>]*>?/gm, '');
+  return stripHtml.trim().slice(0, maxLength);
+}
+
+const discoverOpportunitySchema = z.object({
+  name: z.string().max(100).transform(val => sanitizeString(val, 100)),
+  tagline: z.string().max(250).transform(val => sanitizeString(val, 250)),
+  problem: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
+  solution: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
+  target_user: z.string().max(150).transform(val => sanitizeString(val, 150)),
+  workaround: z.string().max(500).transform(val => sanitizeString(val, 500)),
+  monetization: z.string().max(200).transform(val => sanitizeString(val, 200)),
+  mvp: z.string().max(500).transform(val => sanitizeString(val, 500)),
+  pain_intensity: z.number().int().min(1).max(10),
+  willingness_to_pay: z.number().int().min(1).max(10),
+  validation_speed: z.number().int().min(1).max(10),
+  reachability: z.number().int().min(1).max(10),
+  switching_friction: z.number().int().min(1).max(10),
+  competition: z.number().int().min(1).max(10),
+  ttfd_score: z.number().int().min(1).max(10),
+  demand_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  budget_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  access_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  competition_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  complexity_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  ttfd_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  pay_this_month: z.boolean(),
+  rapid_mvp_days: z.number().int().min(1).max(365),
+});
+
+const generateArtifactsSchema = z.object({
+  landing_page_md: z.string().max(5000).transform(val => sanitizeString(val, 5000)),
+  interview_guide_md: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
+  validation_summary_md: z.string().max(3000).transform(val => sanitizeString(val, 3000)),
+  linkedin_outreach: z.array(z.string().max(1000).transform(val => sanitizeString(val, 1000))),
+  cold_email: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
+  reddit_post: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
+  search_queries: z.array(z.string().max(500).transform(val => sanitizeString(val, 500))),
+});
+
+const analyzeTranscriptSchema = z.object({
+  sentiment: z.enum(['Positive', 'Negative']),
+  pain_level: z.number().int().min(1).max(10),
+  wtp: z.number().int().min(1).max(10),
+  summary: z.string().max(500).transform(val => sanitizeString(val, 500)),
+  key_quote: z.string().max(500).transform(val => sanitizeString(val, 500)),
+});
 
 let genAIClient: GoogleGenAI | null = null;
 
@@ -370,7 +424,39 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
     };
 
     const text = await callAIModel(config, "You are Oppy, the Founder Decision Operating System.", prompt, jsonSchema);
-    const parsed = JSON.parse(text || '{}');
+    let parsed: any;
+    try {
+      const rawParsed = JSON.parse(text || '{}');
+      parsed = discoverOpportunitySchema.parse(rawParsed);
+    } catch (zodErr) {
+      console.warn('Zod schema validation failed for discoverNewOpportunityAI, applying robust fallback defaults:', zodErr);
+      const rawParsed = JSON.parse(text || '{}');
+      parsed = {
+        name: sanitizeString(rawParsed.name || 'New Opportunity', 100),
+        tagline: sanitizeString(rawParsed.tagline || rawSignal, 250),
+        problem: sanitizeString(rawParsed.problem || 'Unstructured customer bottleneck.', 1000),
+        solution: sanitizeString(rawParsed.solution || 'Automated workflow optimization.', 1000),
+        target_user: sanitizeString(rawParsed.target_user || 'Target operations manager', 150),
+        workaround: sanitizeString(rawParsed.workaround || 'Manual workaround.', 500),
+        monetization: sanitizeString(rawParsed.monetization || '$200/mo subscription.', 200),
+        mvp: sanitizeString(rawParsed.mvp || 'MVP validation dashboard.', 500),
+        pain_intensity: Math.min(10, Math.max(1, Number(rawParsed.pain_intensity) || 7)),
+        willingness_to_pay: Math.min(10, Math.max(1, Number(rawParsed.willingness_to_pay) || 7)),
+        validation_speed: Math.min(10, Math.max(1, Number(rawParsed.validation_speed) || 7)),
+        reachability: Math.min(10, Math.max(1, Number(rawParsed.reachability) || 7)),
+        switching_friction: Math.min(10, Math.max(1, Number(rawParsed.switching_friction) || 7)),
+        competition: Math.min(10, Math.max(1, Number(rawParsed.competition) || 7)),
+        ttfd_score: Math.min(10, Math.max(1, Number(rawParsed.ttfd_score) || 7)),
+        demand_risk: (rawParsed.demand_risk === 'High Risk' || rawParsed.demand_risk === 'Medium Risk') ? rawParsed.demand_risk : 'Low Risk',
+        budget_risk: (rawParsed.budget_risk === 'High Risk' || rawParsed.budget_risk === 'Medium Risk') ? rawParsed.budget_risk : 'Low Risk',
+        access_risk: (rawParsed.access_risk === 'High Risk' || rawParsed.access_risk === 'Medium Risk') ? rawParsed.access_risk : 'Low Risk',
+        competition_risk: (rawParsed.competition_risk === 'High Risk' || rawParsed.competition_risk === 'Medium Risk') ? rawParsed.competition_risk : 'Low Risk',
+        complexity_risk: (rawParsed.complexity_risk === 'High Risk' || rawParsed.complexity_risk === 'Medium Risk') ? rawParsed.complexity_risk : 'Low Risk',
+        ttfd_risk: (rawParsed.ttfd_risk === 'High Risk' || rawParsed.ttfd_risk === 'Medium Risk') ? rawParsed.ttfd_risk : 'Low Risk',
+        pay_this_month: !!rawParsed.pay_this_month,
+        rapid_mvp_days: Math.min(365, Math.max(1, Number(rawParsed.rapid_mvp_days) || 10)),
+      };
+    }
 
     // Calculate IQI
     const p = Math.min(10, Math.max(1, parsed.pain_intensity || 7));
@@ -581,7 +667,27 @@ Return JSON containing high-converting landing page markdown, the canonical 8 in
     };
 
     const text = await callAIModel(config, "You are Oppy, the Founder Decision Operating System.", prompt, jsonSchema);
-    const data = JSON.parse(text || '{}');
+    let data: any;
+    try {
+      const rawData = JSON.parse(text || '{}');
+      data = generateArtifactsSchema.parse(rawData);
+    } catch (zodErr) {
+      console.warn('Zod schema validation failed for generateArtifactsAI, applying fallback recovery:', zodErr);
+      const rawData = JSON.parse(text || '{}');
+      data = {
+        landing_page_md: sanitizeString(rawData.landing_page_md || `# Solve ${opp.problem}\n\n**${opp.name}** delivers ${opp.solution}.`, 5000),
+        interview_guide_md: sanitizeString(rawData.interview_guide_md || `1. How do you solve this bottleneck today?`, 4000),
+        validation_summary_md: sanitizeString(rawData.validation_summary_md || `Hypothesis validation plan for ${opp.name}`, 3000),
+        linkedin_outreach: Array.isArray(rawData.linkedin_outreach)
+          ? rawData.linkedin_outreach.map((x: any) => sanitizeString(String(x), 1000))
+          : [`Hi, we are researching ${opp.problem}. Can we chat?`],
+        cold_email: sanitizeString(rawData.cold_email || `Hi [Name], testing lightweight solution for ${opp.problem}.`, 4000),
+        reddit_post: sanitizeString(rawData.reddit_post || `Hey community, how do you handle ${opp.problem}?`, 4000),
+        search_queries: Array.isArray(rawData.search_queries)
+          ? rawData.search_queries.map((x: any) => sanitizeString(String(x), 500))
+          : [`"${opp.target_user}" "${opp.problem}"`],
+      };
+    }
     opp.artifacts = {
       landing_page_md: data.landing_page_md || opp.artifacts?.landing_page_md,
       interview_guide_md: data.interview_guide_md || opp.artifacts?.interview_guide_md,
@@ -649,13 +755,27 @@ Extract:
     };
 
     const text = await callAIModel(config, "You are Oppy, the Founder Decision Operating System.", prompt, jsonSchema);
-    const data = JSON.parse(text || '{}');
+    let result: any;
+    try {
+      const rawResult = JSON.parse(text || '{}');
+      result = analyzeTranscriptSchema.parse(rawResult);
+    } catch (zodErr) {
+      console.warn('Zod schema validation failed for analyzeTranscriptAI, applying robust fallback recovery:', zodErr);
+      const rawResult = JSON.parse(text || '{}');
+      result = {
+        sentiment: rawResult.sentiment === 'Negative' ? 'Negative' : 'Positive',
+        pain_level: Math.min(10, Math.max(1, Number(rawResult.pain_level) || 7)),
+        wtp: Math.min(10, Math.max(1, Number(rawResult.wtp) || 5)),
+        summary: sanitizeString(rawResult.summary || 'Customer transcript analyzed with fallback extraction.', 500),
+        key_quote: sanitizeString(rawResult.key_quote || 'Interview completed.', 500)
+      };
+    }
     return {
-      sentiment: data.sentiment === 'Negative' ? 'Negative' : 'Positive',
-      pain_level: Math.min(10, Math.max(1, data.pain_level || 5)),
-      wtp: Math.min(10, Math.max(1, data.wtp || 5)),
-      summary: data.summary || 'Completed discovery interview.',
-      key_quote: data.key_quote || 'N/A'
+      sentiment: result.sentiment,
+      pain_level: result.pain_level,
+      wtp: result.wtp,
+      summary: result.summary,
+      key_quote: result.key_quote
     };
   } catch (err) {
     console.error('Transcript analysis error:', err);

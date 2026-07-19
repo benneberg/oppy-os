@@ -4,7 +4,7 @@ import { MorningDashboardAnswers, Opportunity } from '../types';
 
 interface MorningCockpitProps {
   morning: MorningDashboardAnswers;
-  onSelectOpportunity: (opp: Opportunity) => void;
+  onSelectOpportunity: (opp: Opportunity, tab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json') => void;
   onRefreshBrief: () => Promise<void>;
   onNavigateToTab: (tab: string) => void;
 }
@@ -266,7 +266,7 @@ export const MorningCockpit: React.FC<MorningCockpitProps> = ({
               morning.needs_outreach_today.map(opp => (
                 <div
                   key={opp.id}
-                  onClick={() => onSelectOpportunity(opp)}
+                  onClick={() => onSelectOpportunity(opp, 'artifacts')}
                   className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 hover:border-neutral-400 transition-all cursor-pointer flex flex-col justify-between"
                 >
                   <div>
