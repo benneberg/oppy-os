@@ -13,6 +13,7 @@ export const OnboardingProfile: React.FC<OnboardingProfileProps> = ({
   onSaveProfile,
   matchedCount
 }) => {
+  const [email, setEmail] = useState<string>(profile.email || '');
   const [skills, setSkills] = useState<string[]>(profile.skills || []);
   const [experienceLevel, setExperienceLevel] = useState<UserProfile['experienceLevel']>(profile.experienceLevel || 'Intermediate');
   const [preferredWork, setPreferredWork] = useState<UserProfile['preferredWork']>(profile.preferredWork || ['Remote']);
@@ -62,6 +63,7 @@ export const OnboardingProfile: React.FC<OnboardingProfileProps> = ({
 
   const handleSave = () => {
     const updated: UserProfile = {
+      email,
       skills,
       experienceLevel,
       preferredWork,
@@ -195,6 +197,20 @@ export const OnboardingProfile: React.FC<OnboardingProfileProps> = ({
           </div>
 
           <div className="space-y-5">
+            {/* Email Address */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-mono font-semibold text-neutral-800 uppercase">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="e.g. founder@oppy.ai"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-neutral-800 font-sans"
+              />
+            </div>
+
             {/* Time Available */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-mono text-neutral-800">

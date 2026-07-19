@@ -28,6 +28,7 @@ const __dirname = path.dirname(__filename);
 // Initialize state
 let portfolio: Opportunity[] = [];
 let userProfile: UserProfile = {
+  email: 'benneberg@gmail.com',
   skills: ['Automation', 'AI', 'Programming'],
   experienceLevel: 'Expert',
   preferredWork: ['Remote'],
@@ -132,7 +133,7 @@ async function startServer() {
       const config = getLLMConfig(req);
       
       // 1. LLM Brainstorming of venture idea
-      const newOpp = await discoverNewOpportunityAI(rawSignal, category || 'Industrial AI', config);
+      const newOpp = await discoverNewOpportunityAI(rawSignal, category || 'Industrial AI', config, userProfile.email);
       portfolio.unshift(newOpp);
       saveOpportunity(newOpp);
 

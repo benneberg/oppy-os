@@ -228,7 +228,7 @@ export const AIWorkforce: React.FC<AIWorkforceProps> = ({
                 <strong className="text-neutral-900">{agent.count}</strong>
               </div>
               <div className="flex justify-between">
-                <span>Reliability:</span>
+                <span>Reliability (Estimated):</span>
                 <strong className="text-emerald-600">{agent.accuracy}</strong>
               </div>
               <div className="flex justify-between truncate">

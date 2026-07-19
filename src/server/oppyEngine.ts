@@ -6,7 +6,10 @@ let genAIClient: GoogleGenAI | null = null;
 
 function getAIClient(): GoogleGenAI {
   if (!genAIClient) {
-    const key = process.env.GEMINI_API_KEY || 'dummy_key_for_build';
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error('GEMINI_API_KEY environment variable is required.');
+    }
     genAIClient = new GoogleGenAI({ apiKey: key });
   }
   return genAIClient;
@@ -181,7 +184,7 @@ export function getMorningAnswers(portfolio: Opportunity[]): MorningDashboardAns
   const recent_revenue = portfolio.reduce((sum, p) => sum + (p.validation.revenue || 0), 0);
 
   // Default heuristic briefing if AI call fails
-  const topName = highest_opportunity ? highest_opportunity.name : 'your industrial opportunities';
+  const topName = highest_opportunity ? highest_opportunity.name : 'none yet';
   const action = highest_opportunity ? `Focus your next 60 minutes on scheduling interviews for ${highest_opportunity.name}.` : 'Review sandbox opportunities.';
 
   return {
@@ -192,7 +195,7 @@ export function getMorningAnswers(portfolio: Opportunity[]): MorningDashboardAns
     stalled_projects,
     new_evidence_leaders,
     recent_revenue,
-    daily_ai_briefing: `Oppy Intelligence: Industrial AI dominates your portfolio value density. ${topName} shows pristine ROI clarity with minimal execution friction.`,
+    daily_ai_briefing: `Oppy OS Intelligence Brief: You have ${portfolio.length} opportunities tracked. Top scorer: ${topName}. Evidence acquisition should remain your core priority today.`,
     recommended_next_action: action
   };
 }
@@ -217,7 +220,7 @@ export async function generateMorningAIIntelligence(portfolio: Opportunity[], co
 }
 
 
-export async function discoverNewOpportunityAI(rawSignal: string, category: Category, config?: LLMConfig): Promise<Opportunity> {
+export async function discoverNewOpportunityAI(rawSignal: string, category: Category, config?: LLMConfig, userEmail?: string): Promise<Opportunity> {
   const id = `opp_${Date.now().toString(36)}`;
   const now = new Date().toISOString();
 
@@ -263,7 +266,7 @@ export async function discoverNewOpportunityAI(rawSignal: string, category: Cate
       status: 'active',
       created: now,
       updated: now,
-      owner: 'founder@oppy.ai',
+      owner: userEmail || 'founder@oppy.ai',
       description: rawSignal,
       problem: `Unstructured friction identified in ${category}.`,
       solution: `Automated intelligence layer built to streamline workflows.`,
@@ -449,7 +452,7 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
       status: 'active',
       created: now,
       updated: now,
-      owner: 'founder@oppy.ai',
+      owner: userEmail || 'founder@oppy.ai',
       description: rawSignal,
       problem: parsed.problem || rawSignal,
       solution: parsed.solution || 'Automated layout parser/workflow intervention',

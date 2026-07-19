@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import nodemailer from 'nodemailer';
 import { Opportunity, LLMConfig } from '../types';
 import { saveOpportunity, getOpportunities } from './db';
 import { computeMatchScore } from '../services/scoringEngine';
@@ -573,13 +574,83 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
     }
   });
 
+  // Daily Digest Email Helper
+  async function sendDigestEmail(to: string, subject: string, header: string, body: string, footer: string): Promise<void> {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const fullText = `${header}${body}${footer}`;
+
+    if (resendApiKey) {
+      try {
+        console.log(`[EMAIL] Attempting delivery via Resend API to: ${to}`);
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${resendApiKey}`
+          },
+          body: JSON.stringify({
+            from: 'Oppy OS <onboarding@resend.dev>',
+            to: [to],
+            subject: subject,
+            text: fullText
+          })
+        });
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Resend API returned status ${response.status}: ${errText}`);
+        }
+        console.log(`[EMAIL] Delivery via Resend successful!`);
+        return;
+      } catch (err) {
+        console.error(`[EMAIL] Resend delivery failed:`, err);
+      }
+    }
+
+    if (smtpHost && smtpUser && smtpPass) {
+      try {
+        console.log(`[EMAIL] Attempting delivery via SMTP host ${smtpHost} to: ${to}`);
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass
+          }
+        });
+        await transporter.sendMail({
+          from: `"Oppy OS" <${smtpUser}>`,
+          to: to,
+          subject: subject,
+          text: fullText
+        });
+        console.log(`[EMAIL] Delivery via SMTP successful!`);
+        return;
+      } catch (err) {
+        console.error(`[EMAIL] SMTP delivery failed:`, err);
+      }
+    }
+
+    // Fallback to simulator
+    console.log(`\n--- [SMTP SIMULATOR] (DEV-ONLY MODE - NO REAL SERVER CONFIGURED) ---`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(fullText);
+    console.log(`--- [SMTP SIMULATOR] END OF DISPATCH ---\n`);
+  }
+
   // Daily Digest Email: Runs at 8:00 AM daily
-  cron.schedule('0 8 * * *', () => {
+  cron.schedule('0 8 * * *', async () => {
     console.log('[SCHEDULER] Compiling Daily Digest Email brief...');
     try {
       const existing = getPortfolio();
       const profile = profileGetter();
       if (!profile) return;
+
+      const recipient = profile.email || 'benneberg@gmail.com';
 
       // Filter active matching opportunities and sort by matchScore desc
       const matches = existing
@@ -587,6 +658,7 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
         .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
         .slice(0, 5);
 
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
       const emailSubject = `Oppy OS: Your Top 5 Venture Matches for Today`;
       const emailHeader = `
 ============================================================
@@ -607,7 +679,7 @@ Est. Income: ${opp.incomeEstimate ? `$${opp.incomeEstimate.min}-${opp.incomeEsti
 Risk Profile: ${opp.scores?.killer?.overall_risk || 'Low Risk'}
 Action Trigger: ${opp.decision?.recommended_action || 'Review Signal'}
 Reason: ${opp.decision?.reason || 'Aligned with preferences.'}
-Link: http://localhost:3000/#opp-${opp.id}
+Link: ${appUrl}/#opp-${opp.id}
 ------------------------------------------------------------`
         ).join('\n')
         : '\nNo outstanding matching opportunities found matching your profile thresholds today.\n';
@@ -618,11 +690,7 @@ Build your MVP. Collect real evidence. Conquer the niche.
 Oppy Founder OS Intelligence Engine.
 ============================================================
 `;
-      console.log(`\n--- [SMTP SIMULATOR] OUTGOING EMAIL DISPATCHED ---`);
-      console.log(`To: benneberg@gmail.com`);
-      console.log(`Subject: ${emailSubject}`);
-      console.log(`${emailHeader}${emailBody}${emailFooter}`);
-      console.log(`--- [SMTP SIMULATOR] DISPATCH COMPLETED SUCCESSFULLY ---\n`);
+      await sendDigestEmail(recipient, emailSubject, emailHeader, emailBody, emailFooter);
     } catch (err) {
       console.error('[SCHEDULER] Failed to compile daily digest:', err);
     }

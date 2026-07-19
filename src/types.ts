@@ -180,6 +180,7 @@ export interface LLMConfig {
 }
 
 export interface UserProfile {
+  email?: string;
   skills: string[];
   experienceLevel: 'Beginner' | 'Intermediate' | 'Expert';
   preferredWork: ('Remote' | 'Local' | 'Hybrid')[];
