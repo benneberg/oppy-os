@@ -1,52 +1,11 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Opportunity, Category, MorningDashboardAnswers, IQIScores, KillerModeScores, TTFDDetails, LLMConfig } from '../types';
 import { computeOppyScore } from '../services/scoringEngine.ts';
+import { discoverOpportunityAISchema, generatedArtifactsAISchema, opportunitySchema, sanitizeString } from '../services/api';
 import { z } from 'zod';
 
-function sanitizeString(str: string, maxLength: number = 1000): string {
-  if (!str) return '';
-  // Strip control characters
-  const clean = str.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-  // Simple XSS defense: strip basic HTML tags
-  const stripHtml = clean.replace(/<[^>]*>?/gm, '');
-  return stripHtml.trim().slice(0, maxLength);
-}
-
-const discoverOpportunitySchema = z.object({
-  name: z.string().max(100).transform(val => sanitizeString(val, 100)),
-  tagline: z.string().max(250).transform(val => sanitizeString(val, 250)),
-  problem: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
-  solution: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
-  target_user: z.string().max(150).transform(val => sanitizeString(val, 150)),
-  workaround: z.string().max(500).transform(val => sanitizeString(val, 500)),
-  monetization: z.string().max(200).transform(val => sanitizeString(val, 200)),
-  mvp: z.string().max(500).transform(val => sanitizeString(val, 500)),
-  pain_intensity: z.number().int().min(1).max(10),
-  willingness_to_pay: z.number().int().min(1).max(10),
-  validation_speed: z.number().int().min(1).max(10),
-  reachability: z.number().int().min(1).max(10),
-  switching_friction: z.number().int().min(1).max(10),
-  competition: z.number().int().min(1).max(10),
-  ttfd_score: z.number().int().min(1).max(10),
-  demand_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  budget_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  access_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  competition_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  complexity_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  ttfd_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
-  pay_this_month: z.boolean(),
-  rapid_mvp_days: z.number().int().min(1).max(365),
-});
-
-const generateArtifactsSchema = z.object({
-  landing_page_md: z.string().max(5000).transform(val => sanitizeString(val, 5000)),
-  interview_guide_md: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
-  validation_summary_md: z.string().max(3000).transform(val => sanitizeString(val, 3000)),
-  linkedin_outreach: z.array(z.string().max(1000).transform(val => sanitizeString(val, 1000))),
-  cold_email: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
-  reddit_post: z.string().max(4000).transform(val => sanitizeString(val, 4000)),
-  search_queries: z.array(z.string().max(500).transform(val => sanitizeString(val, 500))),
-});
+const discoverOpportunitySchema = discoverOpportunityAISchema;
+const generateArtifactsSchema = generatedArtifactsAISchema;
 
 const analyzeTranscriptSchema = z.object({
   sentiment: z.enum(['Positive', 'Negative']),
@@ -320,7 +279,7 @@ export async function discoverNewOpportunityAI(rawSignal: string, category: Cate
       status: 'active',
       created: now,
       updated: now,
-      owner: userEmail || 'founder@oppy.ai',
+      owner: userEmail || '',
       description: rawSignal,
       problem: `Unstructured friction identified in ${category}.`,
       solution: `Automated intelligence layer built to streamline workflows.`,
@@ -538,7 +497,7 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
       status: 'active',
       created: now,
       updated: now,
-      owner: userEmail || 'founder@oppy.ai',
+      owner: userEmail || '',
       description: rawSignal,
       problem: parsed.problem || rawSignal,
       solution: parsed.solution || 'Automated layout parser/workflow intervention',
@@ -612,7 +571,14 @@ Return JSON matching the exact structure requested. Be realistic, sharp, and bus
       next_action: 'Exhaust initial list of 20 target leads via LinkedIn & cold email.'
     });
 
-    return finalOpp;
+    // Validate the complete opportunity against opportunitySchema before returning/committing to DB
+    try {
+      const validatedOpp = opportunitySchema.parse(finalOpp);
+      return validatedOpp as Opportunity;
+    } catch (valErr) {
+      console.warn('Opportunity Zod schema validation warning:', valErr);
+      return finalOpp;
+    }
   } catch (err) {
     console.error('Discover AI error:', err);
     throw new Error('Failed to discover opportunity via AI');
@@ -697,6 +663,14 @@ Return JSON containing high-converting landing page markdown, the canonical 8 in
       reddit_post: data.reddit_post || opp.artifacts?.reddit_post,
       search_queries: data.search_queries || opp.artifacts?.search_queries
     };
+
+    // Validate generated artifacts schema before committing
+    try {
+      opp.artifacts = generatedArtifactsAISchema.partial().parse(opp.artifacts);
+    } catch (artErr) {
+      console.warn('Artifacts Zod schema validation warning:', artErr);
+    }
+
     return opp;
   } catch (err) {
     console.error('Artifact generation error:', err);

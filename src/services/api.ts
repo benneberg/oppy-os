@@ -1,5 +1,139 @@
+import { z } from 'zod';
 import { Opportunity, MorningDashboardAnswers, UserProfile } from '../types';
 import { INITIAL_OPPORTUNITIES } from '../data/initialOpportunities';
+
+export function sanitizeString(str: string, maxLength: number = 1000): string {
+  if (!str) return '';
+  const clean = str.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+  const stripHtml = clean.replace(/<[^>]*>?/gm, '');
+  return stripHtml.trim().slice(0, maxLength);
+}
+
+export const discoverOpportunityAISchema = z.object({
+  name: z.string().max(100).transform(val => sanitizeString(val, 100)),
+  tagline: z.string().max(250).transform(val => sanitizeString(val, 250)),
+  problem: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
+  solution: z.string().max(1000).transform(val => sanitizeString(val, 1000)),
+  target_user: z.string().max(150).transform(val => sanitizeString(val, 150)),
+  workaround: z.string().max(500).transform(val => sanitizeString(val, 500)),
+  monetization: z.string().max(200).transform(val => sanitizeString(val, 200)),
+  mvp: z.string().max(500).transform(val => sanitizeString(val, 500)),
+  pain_intensity: z.number().int().min(1).max(10),
+  willingness_to_pay: z.number().int().min(1).max(10),
+  validation_speed: z.number().int().min(1).max(10),
+  reachability: z.number().int().min(1).max(10),
+  switching_friction: z.number().int().min(1).max(10),
+  competition: z.number().int().min(1).max(10),
+  ttfd_score: z.number().int().min(1).max(10),
+  demand_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  budget_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  access_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  competition_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  complexity_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  ttfd_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+  pay_this_month: z.boolean(),
+  rapid_mvp_days: z.number().int().min(1).max(365),
+});
+
+export const generatedArtifactsAISchema = z.object({
+  landing_page_md: z.string().max(5000).transform(val => sanitizeString(val, 5000)).optional(),
+  interview_guide_md: z.string().max(4000).transform(val => sanitizeString(val, 4000)).optional(),
+  validation_summary_md: z.string().max(3000).transform(val => sanitizeString(val, 3000)).optional(),
+  linkedin_outreach: z.array(z.string().max(1000).transform(val => sanitizeString(val, 1000))).optional(),
+  cold_email: z.string().max(4000).transform(val => sanitizeString(val, 4000)).optional(),
+  reddit_post: z.string().max(4000).transform(val => sanitizeString(val, 4000)).optional(),
+  search_queries: z.array(z.string().max(500).transform(val => sanitizeString(val, 500))).optional(),
+});
+
+export const opportunitySchema = z.object({
+  type: z.enum(['venture', 'opportunity']).optional(),
+  id: z.string(),
+  name: z.string().max(150),
+  tagline: z.string().max(300),
+  category: z.string(),
+  stage: z.enum(['sandbox', 'active', 'validated', 'production', 'archived']),
+  status: z.enum(['active', 'stalled', 'completed', 'killed']),
+  created: z.string(),
+  updated: z.string(),
+  owner: z.string(),
+  description: z.string(),
+  problem: z.string(),
+  solution: z.string(),
+  target_user: z.string(),
+  workaround: z.string(),
+  monetization: z.string(),
+  mvp: z.string(),
+  scores: z.object({
+    iqi: z.object({
+      pain_intensity: z.number(),
+      willingness_to_pay: z.number(),
+      validation_speed: z.number(),
+      reachability: z.number(),
+      switching_friction: z.number(),
+      competition: z.number(),
+      ttfd_score: z.number(),
+      total_iqi: z.number(),
+    }),
+    killer: z.object({
+      demand_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      budget_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      access_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      competition_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      complexity_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      ttfd_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      overall_risk: z.enum(['Low Risk', 'Medium Risk', 'High Risk']),
+      risk_penalty: z.number(),
+    }),
+    ttfd: z.object({
+      pay_this_month: z.boolean(),
+      rapid_mvp_days: z.number(),
+      data_available: z.boolean(),
+      interviews_immediate: z.boolean(),
+      speed_bonus: z.number(),
+    }),
+    priority_score: z.number(),
+    oppy_score_v1: z.number().optional(),
+  }),
+  validation: z.object({
+    interviews: z.number(),
+    positive_interviews: z.number(),
+    negative_interviews: z.number(),
+    landing_visits: z.number(),
+    signup_rate: z.number(),
+    demo_requests: z.number(),
+    preorders: z.number(),
+    revenue: z.number(),
+    evidence_score: z.number(),
+    evidence_weight_percent: z.number().optional(),
+  }),
+  experiments: z.array(z.any()).default([]),
+  artifacts: generatedArtifactsAISchema.default({}),
+  decision: z.object({
+    recommended_action: z.enum(['Investigate Fast', 'Build MVP', 'Collect Evidence', 'Scale Production', 'Kill Opportunity', 'Pause & Re-evaluate']),
+    reason: z.string(),
+  }),
+  notes: z.string().optional(),
+  stalledReason: z.string().optional(),
+  stalledAction: z.string().optional(),
+  source: z.string().optional(),
+  url: z.string().optional(),
+  location: z.string().optional(),
+  remote: z.boolean().optional(),
+  incomeEstimate: z.object({
+    min: z.number(),
+    max: z.number(),
+    currency: z.string()
+  }).optional(),
+  skills: z.array(z.string()).optional(),
+  riskScore: z.number().optional(),
+  trustScore: z.number().optional(),
+  estimatedHours: z.number().optional(),
+  competitionLevel: z.string().optional(),
+  applicationDeadline: z.string().optional(),
+  llmSummary: z.string().optional(),
+  matchScore: z.number().optional(),
+  summarized: z.boolean().optional(),
+});
 
 const BASE_URL = '/api';
 

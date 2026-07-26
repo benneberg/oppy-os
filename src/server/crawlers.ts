@@ -650,7 +650,11 @@ export function startCrawlerScheduler(getPortfolio: () => Opportunity[], saveCal
       const profile = profileGetter();
       if (!profile) return;
 
-      const recipient = profile.email || 'benneberg@gmail.com';
+      const recipient = profile.email || '';
+      if (!recipient) {
+        console.log('[SCHEDULER] No user profile email configured, skipping daily digest email dispatch.');
+        return;
+      }
 
       // Filter active matching opportunities and sort by matchScore desc
       const matches = existing

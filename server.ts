@@ -58,7 +58,7 @@ const __dirname = path.dirname(__filename);
 // Initialize state
 let portfolio: Opportunity[] = [];
 let userProfile: UserProfile = {
-  email: 'benneberg@gmail.com',
+  email: '',
   skills: ['Automation', 'AI', 'Programming'],
   experienceLevel: 'Expert',
   preferredWork: ['Remote'],
