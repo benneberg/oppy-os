@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Opportunity, Stage, Category, MorningDashboardAnswers, UserProfile } from './types';
-import { fetchPortfolio, saveOpportunity, deleteOpportunity, generateArtifacts, resetPortfolio, discoverOpportunity, generateMorningBrief, saveUserProfile } from './services/api';
+import { fetchPortfolio, saveOpportunity, deleteOpportunity, generateArtifacts, resetPortfolio, discoverOpportunity, generateMorningBrief, saveUserProfile, promotePipelineStage } from './services/api';
 import { Header } from './components/Header';
 import { MorningCockpit } from './components/MorningCockpit';
 import { PipelineBoard } from './components/PipelineBoard';
@@ -37,9 +37,9 @@ export default function App() {
   });
   const [activeTab, setActiveTab] = useState<string>('morning');
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
-  const [drawerInitialTab, setDrawerInitialTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | undefined>(undefined);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | 'folder' | undefined>(undefined);
 
-  const handleSelectOpportunity = (opp: Opportunity | null, tab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json') => {
+  const handleSelectOpportunity = (opp: Opportunity | null, tab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | 'folder') => {
     setDrawerInitialTab(tab);
     setSelectedOpp(opp);
   };
@@ -127,8 +127,16 @@ export default function App() {
   };
 
   const handlePromoteStage = async (opp: Opportunity, nextStage: Stage) => {
-    const updated = { ...opp, stage: nextStage, updated: new Date().toISOString() };
-    await handleSaveOpp(updated);
+    try {
+      const res = await promotePipelineStage(opp.id, nextStage);
+      setPortfolio(prev => prev.map(p => p.id === res.opportunity.id ? res.opportunity : p));
+      if (selectedOpp && selectedOpp.id === res.opportunity.id) {
+        setSelectedOpp(res.opportunity);
+      }
+      fetchPortfolio().then(d => setMorning(d.morning));
+    } catch (err: any) {
+      alert(err.message || 'Failed to promote pipeline stage');
+    }
   };
 
   const handleDiscover = async (rawSignal: string, category: Category): Promise<Opportunity> => {

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, BarChart2, ShieldAlert, Clock, Send, FlaskConical, Save, RefreshCw, Copy, Check, DollarSign, MessageSquare, ArrowUpRight, Plus, Trash2, CheckCircle, AlertTriangle, Mic, Square, TrendingUp, Coins, Percent, Sparkles } from 'lucide-react';
+import { X, FileText, BarChart2, ShieldAlert, Clock, Send, FlaskConical, Save, RefreshCw, Copy, Check, DollarSign, MessageSquare, ArrowUpRight, Plus, Trash2, CheckCircle, AlertTriangle, Mic, Square, TrendingUp, Coins, Percent, Sparkles, Folder, Download, Layers, ChevronRight, Play } from 'lucide-react';
 import { Opportunity, Experiment, Stage, UserProfile } from '../types';
 import { computeOppyScore, getMatchExplanation } from '../services/scoringEngine';
-import { transcribeAndAnalyzeInterview } from '../services/api';
+import { transcribeAndAnalyzeInterview, promotePipelineStage } from '../services/api';
+import { generateProductFolderFiles, downloadProductFolderZip } from '../services/productFolder';
 
 interface OpportunityDrawerProps {
   opportunity: Opportunity;
@@ -11,7 +12,7 @@ interface OpportunityDrawerProps {
   onGenerateArtifacts: (id: string) => Promise<Opportunity>;
   onDelete: (id: string) => Promise<void>;
   userProfile?: UserProfile;
-  initialTab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json';
+  initialTab?: 'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | 'folder';
 }
 
 export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
@@ -24,11 +25,17 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
   initialTab
 }) => {
   const [opp, setOpp] = useState<Opportunity>(JSON.parse(JSON.stringify(initialOpp)));
-  const [activeTab, setActiveTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'scores' | 'artifacts' | 'experiments' | 'json' | 'folder'>('overview');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedArtifact, setCopiedArtifact] = useState<Record<string, boolean>>({});
+
+  // Product Folder State
+  const [selectedFolderFile, setSelectedFolderFile] = useState<string>('README.md');
+  const [folderFiles, setFolderFiles] = useState<Record<string, string>>(() => generateProductFolderFiles(initialOpp));
+  const [promoting, setPromoting] = useState(false);
+  const [promoteMessage, setPromoteMessage] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -43,6 +50,40 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+
+  const handlePromoteStageAction = async () => {
+    const nextStageMap: Record<Stage, Stage> = {
+      sandbox: 'active',
+      active: 'validated',
+      validated: 'production',
+      production: 'archived',
+      archived: 'active'
+    };
+    const target = nextStageMap[opp.stage];
+    try {
+      setPromoting(true);
+      setPromoteMessage(null);
+      const res = await promotePipelineStage(opp.id, target);
+      setOpp(res.opportunity);
+      setFolderFiles(res.folder || generateProductFolderFiles(res.opportunity));
+      setPromoteMessage(res.message);
+      await onSave(res.opportunity);
+      setTimeout(() => setPromoteMessage(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to promote pipeline stage:', err);
+      setPromoteMessage(`Error: ${err.message || 'Promotion failed'}`);
+    } finally {
+      setPromoting(false);
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    try {
+      await downloadProductFolderZip(opp);
+    } catch (e) {
+      console.error('Zip download failed:', e);
+    }
+  };
 
   // Dynamic Pricing Sandbox State
   const [arpu, setArpu] = useState(150);
@@ -426,7 +467,8 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
             { id: 'scores', label: '2. IQI & Killer Engine', icon: BarChart2 },
             { id: 'artifacts', label: '3. Validation & Outreach', icon: Send },
             { id: 'experiments', label: `4. Experiments (${opp.experiments.length})`, icon: FlaskConical },
-            { id: 'json', label: '5. opportunity.json', icon: Copy }
+            { id: 'folder', label: '5. Product Folder (.zip)', icon: Folder },
+            { id: 'json', label: '6. opportunity.json', icon: Copy }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1309,7 +1351,135 @@ export const OpportunityDrawer: React.FC<OpportunityDrawerProps> = ({
             </div>
           )}
 
-          {/* TAB 5: CANONICAL JSON */}
+          {/* TAB 5: PRODUCT FOLDER (VENTURE VAULT) */}
+          {activeTab === 'folder' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Product Folder Header Banner */}
+              <div className="bg-neutral-900 text-white rounded-2xl p-5 border border-neutral-800 space-y-3 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block flex items-center space-x-1">
+                      <Folder className="w-3.5 h-3.5 inline mr-1 text-emerald-400" />
+                      <span>AUTOMATED VENTURE PIPELINE FOLDER</span>
+                    </span>
+                    <h3 className="text-lg font-display font-bold text-white">{opp.name} Product Folder</h3>
+                    <p className="text-xs text-neutral-300 font-sans">
+                      Canonical file tree automatically generated and synchronized for the <strong className="text-emerald-300 uppercase">{opp.stage}</strong> stage.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      onClick={handleDownloadZip}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Export .zip</span>
+                    </button>
+                    <button
+                      onClick={handlePromoteStageAction}
+                      disabled={promoting}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-mono text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      {promoting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                      <span>Auto-Promote Stage</span>
+                    </button>
+                  </div>
+                </div>
+
+                {promoteMessage && (
+                  <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs font-mono text-emerald-200 flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{promoteMessage}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Folder Tree & File View Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Left File Explorer */}
+                <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between border-b border-neutral-200 pb-2.5 text-xs font-mono font-bold text-neutral-500 uppercase">
+                    <span className="flex items-center space-x-1">
+                      <Folder className="w-4 h-4 text-neutral-700" />
+                      <span>/{opp.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/</span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 pt-1 font-mono text-xs">
+                    {Object.keys(folderFiles).map(fullPath => {
+                      const fileName = fullPath.split('/').pop() || fullPath;
+                      const isSelected = selectedFolderFile === fileName;
+                      return (
+                        <button
+                          key={fileName}
+                          onClick={() => setSelectedFolderFile(fileName)}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
+                            isSelected
+                              ? 'bg-neutral-900 text-white font-bold shadow-sm'
+                              : 'hover:bg-neutral-200/70 text-neutral-700 font-medium'
+                          }`}
+                        >
+                          <span className="truncate">📄 {fileName}</span>
+                          <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-neutral-400'}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right File Viewer / Editor */}
+                <div className="md:col-span-3 bg-white border border-neutral-200 rounded-2xl p-5 space-y-3 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-mono font-bold text-neutral-900 bg-neutral-100 px-2.5 py-1 rounded-lg border border-neutral-200">
+                        📄 {selectedFolderFile}
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-400">
+                        {selectedFolderFile.endsWith('.json') ? 'JSON Data' : 'Markdown Document'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const fileKey = Object.keys(folderFiles).find(k => k.endsWith(selectedFolderFile)) || selectedFolderFile;
+                        copyToClipboard(folderFiles[fileKey] || '', selectedFolderFile);
+                      }}
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-mono transition-colors border border-neutral-200"
+                    >
+                      {copiedArtifact[selectedFolderFile] ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-600 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-neutral-600" />
+                          <span>Copy File</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={18}
+                    value={(() => {
+                      const fileKey = Object.keys(folderFiles).find(k => k.endsWith(selectedFolderFile)) || selectedFolderFile;
+                      return folderFiles[fileKey] || folderFiles[Object.keys(folderFiles)[0]] || '';
+                    })()}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const fileKey = Object.keys(folderFiles).find(k => k.endsWith(selectedFolderFile)) || selectedFolderFile;
+                      setFolderFiles(prev => ({ ...prev, [fileKey]: val }));
+                    }}
+                    className="w-full p-4 bg-neutral-950 text-neutral-100 rounded-xl font-mono text-xs leading-relaxed border border-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-400 shadow-inner"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: CANONICAL JSON */}
           {activeTab === 'json' && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="flex justify-between items-center">

@@ -239,6 +239,26 @@ export async function generateArtifacts(id: string): Promise<Opportunity> {
   return await res.json();
 }
 
+export async function fetchProductFolder(id: string): Promise<{ id: string; name: string; stage: string; files: Record<string, string> }> {
+  const res = await fetch(`${BASE_URL}/opportunities/${id}/product-folder`);
+  if (!res.ok) throw new Error('Failed to fetch product folder');
+  return await res.json();
+}
+
+export async function promotePipelineStage(id: string, targetStage: Opportunity['stage']): Promise<{ opportunity: Opportunity; message: string; folder: Record<string, string> }> {
+  const byok = getBYOKHeaders();
+  const res = await fetch(`${BASE_URL}/opportunities/${id}/pipeline-promote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...byok
+    },
+    body: JSON.stringify({ targetStage })
+  });
+  if (!res.ok) throw new Error('Failed to promote pipeline stage');
+  return await res.json();
+}
+
 export async function generateMorningBrief(): Promise<{ brief: string }> {
   const byok = getBYOKHeaders();
   const res = await fetch(`${BASE_URL}/morning-brief`, {

@@ -71,8 +71,8 @@ project_intent:
   class: "PRODUCT"
 project_purpose: "To eliminate confirmation bias in early-stage venture creation through objective quantitative scoring and evidence tracking."
 project_state:
-  current_focus: "Data integrity, Zod output validation, and privacy enforcement in crawler/LLM routines."
-  active_work: "Maintaining robust full-stack opportunity scoring and LLM artifact generation."
+  current_focus: "Automated venture pipeline lifecycle execution and Product Folder export (.zip)."
+  active_work: "Maintaining automated stage transition gate checks, Product Folder generation, outreach synthesis, and experiment logging."
   blocked_by: "None"
   next_milestone: "Enhanced analytics, live landing page staging, and expanded integration pipelines."
 lifecycle: "SHIPABLE"

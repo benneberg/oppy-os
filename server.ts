@@ -15,10 +15,8 @@ import {
   getUserProfile,
   saveUserProfile
 } from './src/server/db.ts';
-import {
-  runScoutFleet,
-  startCrawlerScheduler
-} from './src/server/crawlers.ts';
+import { runScoutFleet, startCrawlerScheduler } from './src/server/crawlers.ts';
+import { generateProductFolderFiles } from './src/services/productFolder.ts';
 
 dotenv.config();
 
@@ -251,6 +249,76 @@ async function startServer() {
     portfolio = portfolio.filter(p => p.id !== id);
     deleteOpportunity(id);
     res.json({ success: true });
+  });
+
+  app.get('/api/opportunities/:id/product-folder', (req, res) => {
+    const { id } = req.params;
+    const opp = portfolio.find(p => p.id === id);
+    if (!opp) return res.status(404).json({ error: 'Opportunity not found' });
+
+    const files = generateProductFolderFiles(opp);
+    res.json({ id: opp.id, name: opp.name, stage: opp.stage, files });
+  });
+
+  app.post('/api/opportunities/:id/pipeline-promote', async (req, res) => {
+    const { id } = req.params;
+    const { targetStage } = req.body;
+    const idx = portfolio.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Opportunity not found' });
+
+    const opp = { ...portfolio[idx] };
+    const prevStage = opp.stage;
+    opp.stage = targetStage;
+    opp.updated = new Date().toISOString();
+
+    // Auto-generate artifacts if missing or promoting to active/validated
+    if (!opp.artifacts || !opp.artifacts.landing_page_md || !opp.artifacts.interview_guide_md) {
+      try {
+        const config = getLLMConfig(req);
+        const enriched = await generateArtifactsAI(opp, config);
+        opp.artifacts = enriched.artifacts;
+      } catch (e) {
+        console.warn('[PIPELINE] Artifact auto-generation fallback used:', e);
+      }
+    }
+
+    // Auto-append stage transition experiment log
+    const nowStr = new Date().toISOString().slice(0, 10);
+    const stageLog = {
+      id: `exp_promote_${Date.now()}`,
+      hypothesis: `Promoting venture pipeline stage from ${prevStage.toUpperCase()} to ${targetStage.toUpperCase()}`,
+      date: nowStr,
+      experiment: `Automated Pipeline Lifecycle Gate Execution`,
+      result: `Venture advanced to ${targetStage.toUpperCase()} stage with updated product folder artifacts.`,
+      decision: 'Continue' as const,
+      next_action: targetStage === 'active' 
+        ? 'Deploy outreach messages and conduct 5 customer interviews.' 
+        : targetStage === 'validated' 
+        ? 'Build rapid MVP and collect preorders/pilots.' 
+        : targetStage === 'production' 
+        ? 'Scale user acquisition and establish recurring revenue channels.' 
+        : 'Retire or archive concept.'
+    };
+
+    opp.experiments = [stageLog, ...(opp.experiments || [])];
+
+    // Recalculate score
+    const scoreObj = computeOppyScore(opp.scores.iqi, opp.validation, opp.scores.killer, opp.experiments);
+    opp.scores.priority_score = scoreObj.finalScore;
+    opp.scores.oppy_score_v1 = scoreObj.finalScore;
+    opp.validation.evidence_score = scoreObj.evidence;
+    opp.validation.evidence_weight_percent = scoreObj.evidenceWeightPercent;
+
+    portfolio[idx] = opp;
+    saveOpportunity(opp);
+    reinforceProfileFromFeedback(opp, 'save');
+
+    const folderFiles = generateProductFolderFiles(opp);
+    res.json({
+      opportunity: opp,
+      message: `Venture "${opp.name}" successfully promoted to ${targetStage.toUpperCase()}. Product folder files updated.`,
+      folder: folderFiles
+    });
   });
 
   app.post('/api/artifacts/:id', async (req, res) => {
