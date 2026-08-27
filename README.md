@@ -1,5 +1,32 @@
 # Oppy OS - Founder Decision Operating System
 
+> Evidence-first decision platform for systematically evaluating early-stage venture ideas via weighted evidence chains, risk vector analysis, and WAL-mode SQLite persistence.
+
+[![CI Status](https://github.com/benneberg/oppy-os/actions/workflows/ci.yml/badge.svg)](https://github.com/benneberg/oppy-os/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+---
+
+## Status & Operational Scope
+
+> **Status:** `● Built`
+> **Deployment Target:** Node.js Backend & Vite Single-Page Application (Express + SQLite)
+
+---
+
+## Architectural Overview
+
+Designed to cut through cognitive bias and unverified speculation in early-stage project evaluation:
+- **Evidence-First Data Model:** Strictly enforces programmatic boundaries between raw empirical evidence and subjective assumptions.
+- **Scoring & Risk Vectors:** Dynamic weighting algorithms compute multi-dimensional venture risk profiles.
+- **WAL-Mode SQLite Persistence:** Powered by `better-sqlite3` for high-concurrency read/write operations under multi-agent load.
+- **Automated Companion Utilities:** Integrated task scheduling (`node-cron`), email dispatching (`nodemailer`), and archive export processing (`jszip`).
+
+[ Multi-Agent Input / User Intent ] ---> [ Evidence & Assumption Gate ] ---> [ WAL-Mode SQLite Journal ]
+│
+▼
+[ Scoring & Risk Vector Engine ]
+
 ## Overview
 Oppy OS is an evidence-first command center designed to help venture builders, solo founders, and product incubators validate or reject early-stage venture ideas systematically. By evaluating risk vectors (Killer Risk), calculating baseline potential feasibility indices (Idea Quick-Test Index), and dynamically shifting priority weights based on real customer evidence (interviews, pre-orders, pre-revenues), Oppy OS eliminates emotional confirmation bias before engineering effort begins.
 
