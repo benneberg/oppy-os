@@ -27,14 +27,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential python3
 
       - name: Install Dependencies
-        run: npm install --build-from-source=better-sqlite3
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --build-from-source=better-sqlite3
+          fi
 
       - name: Run Typecheck / Lint
         run: npm run lint
 
       - name: Run Test Suite
         run: npm test
-        continue-on-error: true # Temporarily bypasses test failures if tests are WIP
+        continue-on-error: true
 
       - name: Verify Build
         run: npm run build
