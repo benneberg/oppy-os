@@ -21,18 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          # Removed 'cache: 'npm'' to prevent lockfile error
 
       - name: Install System Build Essentials (for native sqlite bindings)
         run: sudo apt-get update && sudo apt-get install -y build-essential python3
 
       - name: Install Dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --build-from-source=better-sqlite3
-          fi
+        run: npm install --build-from-source=better-sqlite3
 
       - name: Run Typecheck / Lint
         run: npm run lint
