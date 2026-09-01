@@ -1,4 +1,4 @@
-# Oppy OS - Founder Decision Operating System
+# OppyOS - Founder Decision Operating System
 
 > Evidence-first decision platform for systematically evaluating early-stage venture ideas via weighted evidence chains, risk vector analysis, and WAL-mode SQLite persistence.
 
