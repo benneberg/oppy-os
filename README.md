@@ -71,8 +71,11 @@ Once booted, access the web interface in your browser at `http://localhost:3000`
 ---
 
 ## Testing
-There are currently no automated unit test suites configured.
-- Static syntax checking and TypeScript linting:
+- **Unit Test Suite (Vitest)**:
+  ```bash
+  npm test
+  ```
+- **Static Typechecking & Linting**:
   ```bash
   npm run lint
   ```
